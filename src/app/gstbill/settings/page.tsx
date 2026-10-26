@@ -5,12 +5,22 @@ import Link from "next/link";
 import AppBar from "@/components/AppBar";
 import FitToWidth from "@/components/FitToWidth";
 import InvoicePreview from "@/components/InvoicePreview";
+import QuotePreview from "@/components/QuotePreview";
 import { DEFAULT_PROFILE } from "@/lib/company";
 import { computeBill } from "@/lib/gst";
+import { computeQuote } from "@/lib/quote";
 import { STATES, stateName } from "@/lib/states";
 import { getProfile, saveProfile, isCloud } from "@/lib/storage";
 import { TEMPLATE_LIST } from "@/lib/templates";
-import { emptyParty, type Bill, type CompanyProfile, type TemplateId } from "@/lib/types";
+import {
+  emptyParty,
+  type Bill,
+  type CompanyProfile,
+  type InvoiceDisplay,
+  type Quote,
+  type QuoteDisplay,
+  type TemplateId,
+} from "@/lib/types";
 
 const ACCENT_PRESETS = ["#c0392b", "#1d4ed8", "#047857", "#7c3aed", "#ea580c", "#0f766e", "#b45309", "#111827"];
 
@@ -32,6 +42,29 @@ function Text({
     <label className="block">
       <span className="mb-0.5 block text-xs font-medium text-gray-600">{label}</span>
       <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={inputCls} />
+    </label>
+  );
+}
+
+// A labelled show/hide checkbox used for the per-document template toggles.
+function Toggle({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-200 p-2.5 hover:bg-gray-50">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5" />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-gray-800">{label}</span>
+        {hint ? <span className="block text-xs text-gray-500">{hint}</span> : null}
+      </span>
     </label>
   );
 }
@@ -85,8 +118,33 @@ function sampleBill(profile: CompanyProfile): Bill {
   };
 }
 
+function sampleQuote(profile: CompanyProfile): Quote {
+  return {
+    id: "sample",
+    quoteNo: `${profile.invoicePrefix}/Q/2026-27/001`,
+    quoteDate: "2026-10-24",
+    validUntil: "",
+    subject: "Fire Safety Quotation cum Proposal",
+    heading: "Financial Costing for Fire Extinguisher refilling & accessories:",
+    buyerName: "Acme Traders",
+    buyerAddress: "12 MG Road, Jaipur",
+    items: [
+      { id: "1", productName: "Fire Extinguisher ABC 6kg (Refill)", qty: "10", unit: "Nos", rate: "750", amount: 7500 },
+      { id: "2", productName: "ABC Powder Type 4kg", qty: "5", unit: "Nos", rate: "1200", amount: 6000 },
+    ],
+    freight: 0,
+    gstPercent: 18,
+    terms: "GST @ 18% extra on the above amount.\nBill on actual basis on the above rates.",
+    createdAt: "",
+    updatedAt: "",
+  };
+}
+
+type DocTab = "invoice" | "quote";
+
 export default function SettingsPage() {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
+  const [docTab, setDocTab] = useState<DocTab>("invoice");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [newUnit, setNewUnit] = useState("");
@@ -106,6 +164,10 @@ export default function SettingsPage() {
   const patch = (p: Partial<CompanyProfile>) => setProfile({ ...profile, ...p });
   const patchBank = (p: Partial<CompanyProfile["bank"]>) =>
     setProfile({ ...profile, bank: { ...profile.bank, ...p } });
+  const patchInvoice = (p: Partial<InvoiceDisplay>) =>
+    setProfile({ ...profile, invoice: { ...profile.invoice, ...p } });
+  const patchQuote = (p: Partial<QuoteDisplay>) =>
+    setProfile({ ...profile, quote: { ...profile.quote, ...p } });
 
   async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -160,7 +222,7 @@ export default function SettingsPage() {
   }
 
   function resetDefaults() {
-    if (confirm("Reset all company details, logo and template to the original defaults?")) {
+    if (confirm("Reset all company details, logo and templates to the original defaults?")) {
       setProfile({ ...DEFAULT_PROFILE });
       setStatus("Reset to defaults — remember to Save.");
     }
@@ -168,13 +230,14 @@ export default function SettingsPage() {
 
   const btn =
     "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50 transition-colors";
-  const sample = sampleBill(profile);
+  const sampleB = sampleBill(profile);
+  const sampleQ = sampleQuote(profile);
 
   return (
     <div className="min-h-screen">
       <AppBar
         title="Company Profile"
-        subtitle={isCloud() ? "Template & defaults · ☁ Cloud sync on" : "Template & defaults · saved on this device"}
+        subtitle={isCloud() ? "Templates & defaults · ☁ Cloud sync on" : "Templates & defaults · saved on this device"}
         status={status || undefined}
         actions={
           <>
@@ -197,6 +260,132 @@ export default function SettingsPage() {
       <div className="grid gap-6 p-4 lg:grid-cols-2">
         {/* ---------- FORM ---------- */}
         <div className="min-w-0 space-y-5">
+          {/* =========================================================
+               PER-DOCUMENT TEMPLATES — tabs for Invoice vs Quotation
+             ========================================================= */}
+          <section className="rounded-lg border border-gray-200 bg-white p-4">
+            <h2 className="mb-1 font-semibold text-gray-800">Templates</h2>
+            <p className="mb-3 text-xs text-gray-500">
+              Pick what each document shows. Company details, bank details, logo, stamp and brand colour are common
+              and set once below.
+            </p>
+
+            {/* Tabs */}
+            <div className="mb-4 inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+              {(
+                [
+                  ["invoice", "Invoice / Bill"],
+                  ["quote", "Quotation"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setDocTab(id)}
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                    docTab === id ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {docTab === "invoice" ? (
+              <div className="space-y-4">
+                {/* Invoice template presets */}
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-gray-700">Invoice layout</h3>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {TEMPLATE_LIST.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => patch({ template: t.id as TemplateId })}
+                        className={`rounded-lg border p-3 text-left transition-colors ${
+                          profile.template === t.id
+                            ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
+                            : "border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-800">{t.name}</div>
+                        <div className="mt-1 text-xs text-gray-500">{t.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Invoice show / hide */}
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-gray-700">Show on the invoice</h3>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Toggle label="Unit column" checked={profile.invoice.showUnit} onChange={(v) => patchInvoice({ showUnit: v })} />
+                    <Toggle label="Discount column" checked={profile.invoice.showDiscount} onChange={(v) => patchInvoice({ showDiscount: v })} />
+                    <Toggle
+                      label="Signature / Stamp"
+                      hint="The uploaded image above “Authorised Signatory”"
+                      checked={profile.invoice.showSignature}
+                      onChange={(v) => patchInvoice({ showSignature: v })}
+                    />
+                    <Toggle label="Bank details" checked={profile.invoice.showBankDetails} onChange={(v) => patchInvoice({ showBankDetails: v })} />
+                    <Toggle label="Declaration" checked={profile.invoice.showDeclaration} onChange={(v) => patchInvoice({ showDeclaration: v })} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Quotation template presets — chosen independently of the invoice */}
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-gray-700">Quotation layout</h3>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {TEMPLATE_LIST.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => patch({ quoteTemplate: t.id as TemplateId })}
+                        className={`rounded-lg border p-3 text-left transition-colors ${
+                          profile.quoteTemplate === t.id
+                            ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
+                            : "border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-800">{t.name}</div>
+                        <div className="mt-1 text-xs text-gray-500">{t.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    A quotation isn’t a GST tax invoice, so it has no discount or tax column. Brand colour, logo and company
+                    details are shared with the invoice.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-gray-700">Show on the quotation</h3>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Toggle label="Unit column" checked={profile.quote.showUnit} onChange={(v) => patchQuote({ showUnit: v })} />
+                    <Toggle
+                      label="Signature / Stamp"
+                      hint="The uploaded image above “Authorised Signatory”"
+                      checked={profile.quote.showSignature}
+                      onChange={(v) => patchQuote({ showSignature: v })}
+                    />
+                    <Toggle
+                      label="Bank details"
+                      hint="Off by default — turn on to print your bank info on quotes"
+                      checked={profile.quote.showBankDetails}
+                      onChange={(v) => patchQuote({ showBankDetails: v })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* =========================================================
+               COMMON DETAILS — shared by the invoice and the quotation
+             ========================================================= */}
+          <div className="flex items-center gap-3 pt-1">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Common details · shown on both</h2>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
           {/* Logo */}
           <section className="rounded-lg border border-gray-200 bg-white p-4">
             <h2 className="mb-3 font-semibold text-gray-800">Logo</h2>
@@ -226,7 +415,10 @@ export default function SettingsPage() {
 
           {/* Signature / Stamp */}
           <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 font-semibold text-gray-800">Signature / Stamp</h2>
+            <h2 className="mb-1 font-semibold text-gray-800">Signature / Stamp</h2>
+            <p className="mb-3 text-xs text-gray-500">
+              Uploaded once here. Use the tabs above to show or hide it on the invoice and the quotation.
+            </p>
             <div className="flex items-center gap-4">
               <div className="flex h-20 w-40 items-center justify-center overflow-hidden rounded border border-dashed border-gray-300 bg-gray-50">
                 {profile.signature ? (
@@ -253,25 +445,10 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* Template */}
+          {/* Brand colour */}
           <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 font-semibold text-gray-800">Default Template</h2>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {TEMPLATE_LIST.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => patch({ template: t.id as TemplateId })}
-                  className={`rounded-lg border p-3 text-left transition-colors ${
-                    profile.template === t.id ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500" : "border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="font-semibold text-gray-800">{t.name}</div>
-                  <div className="mt-1 text-xs text-gray-500">{t.description}</div>
-                </button>
-              ))}
-            </div>
-
-            <h3 className="mb-2 mt-4 text-sm font-medium text-gray-700">Accent Colour</h3>
+            <h2 className="mb-1 font-semibold text-gray-800">Brand Colour</h2>
+            <p className="mb-3 text-xs text-gray-500">Accent used on both the invoice and the quotation.</p>
             <div className="flex flex-wrap items-center gap-2">
               {ACCENT_PRESETS.map((c) => (
                 <button
@@ -289,54 +466,6 @@ export default function SettingsPage() {
                 className="h-7 w-10 cursor-pointer rounded border border-gray-300"
                 title="Custom colour"
               />
-            </div>
-          </section>
-
-          {/* Invoice options */}
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 font-semibold text-gray-800">Invoice Options</h2>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={profile.showUnit} onChange={(e) => patch({ showUnit: e.target.checked })} />
-                Show the <span className="font-medium">Unit</span> column
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={profile.showDiscount} onChange={(e) => patch({ showDiscount: e.target.checked })} />
-                Show the <span className="font-medium">Discount</span> column
-              </label>
-            </div>
-
-            <h3 className="mb-1 mt-4 text-sm font-medium text-gray-700">Units</h3>
-            <p className="mb-2 text-xs text-gray-500">
-              Options in the Unit dropdown when adding items (Nos, Mtr, Pcs, Ltr, Kg…).
-            </p>
-            <div className="mb-2 flex flex-wrap gap-2">
-              {profile.units.length === 0 && <span className="text-xs text-gray-400">No units yet</span>}
-              {profile.units.map((u) => (
-                <span key={u} className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-50 px-2 py-0.5 text-xs">
-                  {u}
-                  <button onClick={() => removeUnit(u)} className="text-gray-400 hover:text-red-600" title={`Remove ${u}`}>
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                value={newUnit}
-                onChange={(e) => setNewUnit(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addUnit();
-                  }
-                }}
-                placeholder="Add a unit, e.g. Meter"
-                className={`${inputCls} max-w-[200px]`}
-              />
-              <button className={`${btn} bg-gray-800 text-white hover:bg-black`} onClick={addUnit}>
-                Add
-              </button>
             </div>
           </section>
 
@@ -383,13 +512,55 @@ export default function SettingsPage() {
               <Text label="Declaration" value={profile.declaration} onChange={(v) => patch({ declaration: v })} />
             </div>
           </section>
+
+          {/* Item units */}
+          <section className="rounded-lg border border-gray-200 bg-white p-4">
+            <h2 className="mb-1 font-semibold text-gray-800">Item Units</h2>
+            <p className="mb-2 text-xs text-gray-500">
+              Options in the Unit dropdown when adding items (Nos, Mtr, Pcs, Ltr, Kg…).
+            </p>
+            <div className="mb-2 flex flex-wrap gap-2">
+              {profile.units.length === 0 && <span className="text-xs text-gray-400">No units yet</span>}
+              {profile.units.map((u) => (
+                <span key={u} className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-50 px-2 py-0.5 text-xs">
+                  {u}
+                  <button onClick={() => removeUnit(u)} className="text-gray-400 hover:text-red-600" title={`Remove ${u}`}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newUnit}
+                onChange={(e) => setNewUnit(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addUnit();
+                  }
+                }}
+                placeholder="Add a unit, e.g. Meter"
+                className={`${inputCls} max-w-[200px]`}
+              />
+              <button className={`${btn} bg-gray-800 text-white hover:bg-black`} onClick={addUnit}>
+                Add
+              </button>
+            </div>
+          </section>
         </div>
 
         {/* ---------- LIVE PREVIEW ---------- */}
         <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-          <p className="mb-2 text-xs text-gray-500">Live preview (sample data) — scaled to fit</p>
+          <p className="mb-2 text-xs text-gray-500">
+            Live preview — {docTab === "invoice" ? "Invoice" : "Quotation"} (sample data), scaled to fit
+          </p>
           <FitToWidth>
-            <InvoicePreview bill={sample} totals={computeBill(sample)} profile={profile} />
+            {docTab === "invoice" ? (
+              <InvoicePreview bill={sampleB} totals={computeBill(sampleB)} profile={profile} />
+            ) : (
+              <QuotePreview quote={sampleQ} totals={computeQuote(sampleQ)} profile={profile} />
+            )}
           </FitToWidth>
         </div>
       </div>

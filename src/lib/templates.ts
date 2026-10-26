@@ -1,7 +1,8 @@
-// Invoice template presets. Each template is a set of style "knobs" that both
-// the on-screen preview and the PDF read, so the two always match. The body
-// (bill-to/ship-to, item table, totals, footer) is shared; templates vary the
-// header layout, the accent band, the table-header colour and the border weight.
+// Document templates. Unlike before, these are NOT knobs over one shared body —
+// each `id` is a genuinely different page architecture. The on-screen A4 preview
+// and the react-pdf renderer both `switch` on the id and build the matching
+// layout, so the two always agree. The spec here only carries identity (id,
+// name, description) for the picker; the structure lives in the renderers.
 
 import type { TemplateId } from "./types";
 
@@ -9,46 +10,53 @@ export interface TemplateSpec {
   id: TemplateId;
   name: string;
   description: string;
-  headerLayout: "centered" | "split"; // centered title vs letterhead-left + title-right
-  headerBand: boolean; // tinted accent band behind the letterhead
-  tableHead: "dark" | "accent" | "light";
-  borders: "full" | "soft";
 }
 
 export const TEMPLATES: Record<TemplateId, TemplateSpec> = {
   classic: {
     id: "classic",
     name: "Classic",
-    description: "Centered letterhead, bold dark table header, full borders — formal and traditional.",
-    headerLayout: "centered",
-    headerBand: false,
-    tableHead: "dark",
-    borders: "full",
+    description: "Your original VM Enterprises layout — centred letterhead, dark table header, full borders. Unchanged.",
   },
-  modern: {
-    id: "modern",
-    name: "Modern",
-    description: "Logo to the left, accent-coloured band and table header, softer lines.",
-    headerLayout: "split",
-    headerBand: true,
-    tableHead: "accent",
-    borders: "soft",
+  banner: {
+    id: "banner",
+    name: "Banner",
+    description: "A bold full-width colour header with the name reversed out, a clean zebra table and a totals card. Modern.",
   },
   minimal: {
     id: "minimal",
     name: "Minimal",
-    description: "Clean and airy — light table header, thin lines, lots of whitespace.",
-    headerLayout: "split",
-    headerBand: false,
-    tableHead: "light",
-    borders: "soft",
+    description: "Airy letter style — hairline rules, no boxes, lots of white space. Understated and clean.",
+  },
+  sidebar: {
+    id: "sidebar",
+    name: "Sidebar",
+    description: "A full-height accent rail down the left carries the logo and contact; the content fills the right. Corporate.",
+  },
+  premium: {
+    id: "premium",
+    name: "Premium",
+    description: "A dark header block, uppercase tracked labels and a reversed 'Total' block. A boutique, premium feel.",
   },
 };
 
 export const TEMPLATE_LIST: TemplateSpec[] = Object.values(TEMPLATES);
 
+// Older saved bills/profiles used a first-generation id that no longer exists
+// ("modern"). "classic" and "minimal" are still valid ids, so they pass through
+// unchanged and keep their original look.
+const LEGACY: Record<string, TemplateId> = {
+  modern: "banner",
+};
+
+export function migrateTemplateId(id: string | undefined): TemplateId {
+  if (id && id in TEMPLATES) return id as TemplateId;
+  if (id && id in LEGACY) return LEGACY[id];
+  return "classic";
+}
+
 export function getTemplate(id: string | undefined): TemplateSpec {
-  return TEMPLATES[id as TemplateId] ?? TEMPLATES.classic;
+  return TEMPLATES[migrateTemplateId(id)];
 }
 
 // ---- colour helpers (used by both HTML preview and react-pdf) ----

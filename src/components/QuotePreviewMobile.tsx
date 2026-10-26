@@ -101,7 +101,7 @@ export default function QuotePreviewMobile({
                   </div>
                   <div className="mt-1 text-[11px] text-gray-500">
                     {it.qty || "—"}
-                    {it.unit ? ` ${it.unit}` : ""} × {it.rate || "—"}
+                    {profile.quote.showUnit && it.unit ? ` ${it.unit}` : ""} × {it.rate || "—"}
                   </div>
                 </li>
               ))}
@@ -140,9 +140,27 @@ export default function QuotePreviewMobile({
           </div>
         ) : null}
 
+        {/* Bank details (optional) */}
+        {profile.quote.showBankDetails ? (
+          <div className="px-4 py-3 text-[11px] leading-relaxed text-gray-600">
+            <p className="text-xs font-semibold text-gray-800">Bank Details</p>
+            <p>
+              {profile.bank.name}
+              {profile.bank.branch ? ` · ${profile.bank.branch}` : ""}
+            </p>
+            <p>
+              A/c {profile.bank.accountNo} · IFSC {profile.bank.ifsc}
+            </p>
+          </div>
+        ) : null}
+
         {/* Signature */}
         <div className="px-4 py-3 text-right text-xs text-gray-600">
           <p className="font-medium text-gray-800">For {profile.name}</p>
+          {profile.quote.showSignature && profile.signature ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profile.signature} alt="Signature" className="ml-auto mt-1 h-10 object-contain" />
+          ) : null}
           <p className="mt-6 text-gray-500">Authorised Signatory</p>
         </div>
       </div>

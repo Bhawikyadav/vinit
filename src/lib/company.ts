@@ -29,11 +29,25 @@ export const DEFAULT_PROFILE: CompanyProfile = {
   invoicePrefix: "VM", // invoice numbers look like VM/2026-27/001
   logo: "",
   signature: "",
-  template: "classic",
   accentColor: "#c0392b",
-  showUnit: true,
-  showDiscount: true,
   units: ["Nos", "Pcs", "Set", "Kg", "Mtr", "Ltr", "Box", "Hour", "Service"],
+  template: "classic", // invoice layout — the original VM Enterprises look
+  quoteTemplate: "classic", // quotation layout — picked independently in Settings
+  // Invoice shows everything by default (matches the original fixed layout).
+  invoice: {
+    showUnit: true,
+    showDiscount: true,
+    showSignature: true,
+    showBankDetails: true,
+    showDeclaration: true,
+  },
+  // Quotation shows the stamp when one is uploaded; bank details are opt-in so
+  // the default quote keeps its original, cleaner look.
+  quote: {
+    showUnit: true,
+    showSignature: true,
+    showBankDetails: false,
+  },
 };
 
 // Backward-compatible alias used as the default where the live profile isn't loaded.

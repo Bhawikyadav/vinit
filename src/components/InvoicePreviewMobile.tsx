@@ -129,9 +129,9 @@ export default function InvoicePreviewMobile({
                       {it.hsnSac ? <span>HSN {it.hsnSac}</span> : null}
                       <span>
                         {it.qty}
-                        {profile.showUnit ? ` ${it.unit}` : ""} × ₹{formatINR(it.rate)}
+                        {profile.invoice.showUnit ? ` ${it.unit}` : ""} × ₹{formatINR(it.rate)}
                       </span>
-                      {profile.showDiscount && it.discount ? <span>− ₹{formatINR(it.discount)} disc</span> : null}
+                      {profile.invoice.showDiscount && it.discount ? <span>− ₹{formatINR(it.discount)} disc</span> : null}
                       <span>Taxable ₹{formatINR(r.taxable)}</span>
                       <span>
                         GST {it.gstRate}% = ₹{formatINR(r.gstAmount)}
@@ -164,24 +164,28 @@ export default function InvoicePreviewMobile({
           ) : null}
         </div>
 
-        {/* Bank + declaration */}
+        {/* Bank + declaration — each optional; the sign-off always shows */}
         <div className="px-4 py-3 text-[11px] leading-relaxed text-gray-600">
-          <p className="text-xs font-semibold text-gray-800">Bank Details</p>
-          <p>
-            {profile.bank.name}
-            {profile.bank.branch ? ` · ${profile.bank.branch}` : ""}
-          </p>
-          <p>
-            A/c {profile.bank.accountNo} · IFSC {profile.bank.ifsc}
-          </p>
-          {profile.declaration ? (
+          {profile.invoice.showBankDetails ? (
+            <>
+              <p className="text-xs font-semibold text-gray-800">Bank Details</p>
+              <p>
+                {profile.bank.name}
+                {profile.bank.branch ? ` · ${profile.bank.branch}` : ""}
+              </p>
+              <p>
+                A/c {profile.bank.accountNo} · IFSC {profile.bank.ifsc}
+              </p>
+            </>
+          ) : null}
+          {profile.invoice.showDeclaration && profile.declaration ? (
             <>
               <p className="mt-2 text-xs font-semibold text-gray-800">Declaration</p>
               <p>{profile.declaration}</p>
             </>
           ) : null}
           <div className="mt-3">
-            {profile.signature ? (
+            {profile.invoice.showSignature && profile.signature ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profile.signature} alt="Signature" className="h-10 object-contain" />
             ) : null}

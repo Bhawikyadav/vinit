@@ -34,12 +34,14 @@ function Text({
   onChange,
   type = "text",
   placeholder,
+  hint,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
   placeholder?: string;
+  hint?: string;
 }) {
   return (
     <label className="block">
@@ -51,6 +53,7 @@ function Text({
         onChange={(e) => onChange(e.target.value)}
         className={inputCls}
       />
+      {hint ? <span className="mt-0.5 block text-[11px] leading-tight text-gray-400">{hint}</span> : null}
     </label>
   );
 }
@@ -155,7 +158,13 @@ function QuotationInner() {
         }
       }
       const all = await getAllQuotes();
-      setQuote(blankQuote(nextQuoteNo(all.map((q) => q.quoteNo), new Date(), prof.invoicePrefix)));
+      // Snapshot the chosen quotation template + accent so a past quote keeps
+      // its look even if the default is later changed (mirrors the bill).
+      setQuote({
+        ...blankQuote(nextQuoteNo(all.map((q) => q.quoteNo), new Date(), prof.invoicePrefix)),
+        template: prof.quoteTemplate,
+        accentColor: prof.accentColor,
+      });
     })();
   }, [editId]);
 
@@ -297,10 +306,11 @@ function QuotationInner() {
               <Text label="Date" type="date" value={quote.quoteDate} onChange={(v) => patch({ quoteDate: v })} />
               <Text label="Valid Until" type="date" value={quote.validUntil} onChange={(v) => patch({ validUntil: v })} />
               <Text
-                label="GST % (noted as extra, not added here)"
+                label="GST %"
                 type="number"
                 value={String(quote.gstPercent)}
                 onChange={(v) => patch({ gstPercent: Number(v) })}
+                hint="Noted as extra, not added to the total."
               />
               <div className="col-span-2">
                 <Text label="Subject" value={quote.subject} onChange={(v) => patch({ subject: v })} />
@@ -349,10 +359,12 @@ function QuotationInner() {
                         <Text label="Product Name" value={it.productName} onChange={(v) => patchItem(it.id, { productName: v })} />
                       </div>
                       <Text label="Qty" value={it.qty} onChange={(v) => patchItem(it.id, { qty: v })} placeholder="e.g. 20 or As per requirement" />
-                      <label className="block">
-                        <span className="mb-0.5 block text-xs font-medium text-gray-600">Unit</span>
-                        <UnitPicker value={it.unit} options={unitOptions} onChange={(v) => patchItem(it.id, { unit: v })} />
-                      </label>
+                      {profile.quote.showUnit && (
+                        <label className="block">
+                          <span className="mb-0.5 block text-xs font-medium text-gray-600">Unit</span>
+                          <UnitPicker value={it.unit} options={unitOptions} onChange={(v) => patchItem(it.id, { unit: v })} />
+                        </label>
+                      )}
                       <Text label="Rate" value={it.rate} onChange={(v) => patchItem(it.id, { rate: v })} placeholder="e.g. 7600 or 750/mtr" />
                       <div className="col-span-2 md:col-span-3">
                         <label className="block">

@@ -321,7 +321,7 @@ function GstBillInner() {
                     </div>
                     <Text label="HSN/SAC" value={it.hsnSac} onChange={(v) => patchItem(it.id, { hsnSac: v })} />
                     <Text label="Qty" type="number" value={String(it.qty)} onChange={(v) => patchItem(it.id, { qty: Number(v) })} />
-                    {profile.showUnit && (
+                    {profile.invoice.showUnit && (
                       <label className="block">
                         <span className="mb-0.5 block text-xs font-medium text-gray-600">Unit</span>
                         <select value={it.unit} onChange={(e) => patchItem(it.id, { unit: e.target.value })} className={inputCls}>
@@ -335,7 +335,7 @@ function GstBillInner() {
                       </label>
                     )}
                     <Text label="Rate (₹)" type="number" value={String(it.rate)} onChange={(v) => patchItem(it.id, { rate: Number(v) })} />
-                    {profile.showDiscount && (
+                    {profile.invoice.showDiscount && (
                       <Text label="Disc (₹)" type="number" value={String(it.discount)} onChange={(v) => patchItem(it.id, { discount: Number(v) })} />
                     )}
                     <label className="block">

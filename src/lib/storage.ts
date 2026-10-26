@@ -4,6 +4,7 @@
 // on the server). There is no local-only mode — the app is always cloud-backed.
 
 import { DEFAULT_PROFILE } from "./company";
+import { migrateTemplateId } from "./templates";
 import type { Bill, CompanyProfile } from "./types";
 
 // Kept for the UI badges ("☁ Cloud sync on"). Always true now.
@@ -59,24 +60,63 @@ export async function deleteBill(id: string): Promise<void> {
 }
 
 // ---------- Company profile (single record) ----------
-// Merge stored values over the defaults so new fields always have a value.
-function mergeProfile(stored: Partial<CompanyProfile> | null): CompanyProfile {
-  if (!stored) return { ...DEFAULT_PROFILE };
+// A fresh copy of the defaults, with the nested objects cloned so callers can
+// mutate their profile without touching the shared DEFAULT_PROFILE constant.
+function defaultProfile(): CompanyProfile {
   return {
     ...DEFAULT_PROFILE,
+    bank: { ...DEFAULT_PROFILE.bank },
+    units: [...DEFAULT_PROFILE.units],
+    invoice: { ...DEFAULT_PROFILE.invoice },
+    quote: { ...DEFAULT_PROFILE.quote },
+  };
+}
+
+// Merge stored values over the defaults so new fields always have a value.
+// Older saved profiles kept flat `showUnit` / `showDiscount` flags; those are
+// migrated into the per-document `invoice` / `quote` objects when the nested
+// form isn't present yet.
+function mergeProfile(stored: Partial<CompanyProfile> | null): CompanyProfile {
+  if (!stored) return defaultProfile();
+  const legacy = stored as Partial<CompanyProfile> & {
+    showUnit?: boolean;
+    showDiscount?: boolean;
+  };
+  const merged: CompanyProfile = {
+    ...defaultProfile(),
     ...stored,
     bank: { ...DEFAULT_PROFILE.bank, ...(stored.bank ?? {}) },
+    invoice: {
+      ...DEFAULT_PROFILE.invoice,
+      showUnit: legacy.showUnit ?? DEFAULT_PROFILE.invoice.showUnit,
+      showDiscount: legacy.showDiscount ?? DEFAULT_PROFILE.invoice.showDiscount,
+      ...(stored.invoice ?? {}),
+    },
+    quote: {
+      ...DEFAULT_PROFILE.quote,
+      showUnit: legacy.showUnit ?? DEFAULT_PROFILE.quote.showUnit,
+      ...(stored.quote ?? {}),
+    },
+    // Map first-generation ids (classic/modern) onto the new layouts. The
+    // quotation never had a template before, so it defaults to the invoice's.
+    template: migrateTemplateId(stored.template),
+    quoteTemplate: migrateTemplateId(stored.quoteTemplate ?? stored.template),
   };
+  // Drop the migrated legacy flags so they don't linger on the saved record.
+  const bag = merged as unknown as Record<string, unknown>;
+  delete bag.showUnit;
+  delete bag.showDiscount;
+  return merged;
 }
 
 export async function getProfile(): Promise<CompanyProfile> {
   try {
     const res = await fetch("/api/profile", { cache: "no-store" });
-    if (res.status === 404) return { ...DEFAULT_PROFILE };
+    if (res.status === 404) return defaultProfile();
     if (!res.ok) throw new Error("Failed to load profile");
     return mergeProfile((await res.json()) as Partial<CompanyProfile>);
   } catch {
-    return { ...DEFAULT_PROFILE };
+    return defaultProfile();
   }
 }
 

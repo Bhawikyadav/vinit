@@ -1,8 +1,33 @@
 // Core data shapes for a GST bill.
 
-export type TemplateId = "classic" | "modern" | "minimal";
+// The document layouts. Each is a genuinely different page architecture
+// (see src/lib/templates.ts), not a recolour of one body. "classic" is the
+// original VM Enterprises layout, kept intact; the other four are new. The same
+// ids are offered for both the invoice and the quotation, but each document is
+// picked independently (profile.template vs profile.quoteTemplate).
+export type TemplateId = "classic" | "banner" | "minimal" | "sidebar" | "premium";
+
+// What to show / hide on a printed INVOICE. Edited from the "Invoice" tab in
+// Settings; the brand assets they reference (signature image, bank details) live
+// on the common CompanyProfile and are shared with the quotation.
+export interface InvoiceDisplay {
+  showUnit: boolean; // the Unit column
+  showDiscount: boolean; // the Disc column
+  showSignature: boolean; // the uploaded signature / stamp image
+  showBankDetails: boolean; // the Bank Details block
+  showDeclaration: boolean; // the Declaration text
+}
+
+// What to show / hide on a printed QUOTATION ("Quotation" tab in Settings). A
+// quotation has no discount column, so that toggle is absent here.
+export interface QuoteDisplay {
+  showUnit: boolean; // the Unit column
+  showSignature: boolean; // the uploaded signature / stamp image
+  showBankDetails: boolean; // print the Bank Details block (off by default)
+}
 
 export interface CompanyProfile {
+  // ---- Common company identity & assets (shared by both documents) ----
   name: string;
   tagline: string;
   proprietor: string;
@@ -18,11 +43,13 @@ export interface CompanyProfile {
   invoicePrefix: string;
   logo: string; // data URL ("data:image/...") or "" if none
   signature: string; // signature/stamp image, data URL or "" if none
-  template: TemplateId; // default template for new bills
-  accentColor: string; // brand color, hex (e.g. "#c0392b")
-  showUnit: boolean; // show the Unit column on invoices
-  showDiscount: boolean; // show the Disc column on invoices
+  accentColor: string; // brand color, hex (e.g. "#c0392b") — used on both docs
   units: string[]; // selectable units in the item form
+  // ---- Per-document template settings ----
+  template: TemplateId; // INVOICE layout (grid / banner / minimal / sidebar / premium)
+  quoteTemplate: TemplateId; // QUOTATION layout — chosen independently of the invoice
+  invoice: InvoiceDisplay; // what the invoice shows / hides
+  quote: QuoteDisplay; // what the quotation shows / hides
 }
 
 export interface Party {
@@ -121,6 +148,11 @@ export interface Quote {
   freight: number; // shown as its own row before the total
   gstPercent: number; // used for the "GST % extra" note + invoice conversion (not added to the shown total)
   terms: string; // multi-line, one term per line
+  // Snapshot of the template/accent used when this quote was created, so a past
+  // quote keeps its look even if the default is later changed. Falls back to the
+  // profile default (quoteTemplate / accentColor) when absent. Mirrors Bill.
+  template?: TemplateId;
+  accentColor?: string;
   createdAt: string;
   updatedAt: string;
 }
