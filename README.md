@@ -23,8 +23,9 @@ npm run dev     # http://localhost:3000
 
 ## Storage
 
-- **Default:** browser (`localStorage`) — works immediately, this device only. Use **Export Backup** regularly.
-- **Cloud sync (multi-device):** free **MongoDB Atlas**. Copy `.env.example` → `.env.local`, fill in `MONGODB_URI`, set `NEXT_PUBLIC_USE_CLOUD=1`, restart.
+All bills and quotations are stored in **MongoDB** (free **MongoDB Atlas** works).
+Copy `.env.example` → `.env.local` and fill in `MONGODB_URI` (and `AUTH_SECRET` /
+`SIGNUP_CODE` for login), then restart.
 
 ```
 src/
@@ -37,4 +38,4 @@ src/
 
 ## Deploy
 
-Push to GitHub → import on **Vercel** (free). For cloud sync, add `MONGODB_URI`, `MONGODB_DB`, `NEXT_PUBLIC_USE_CLOUD=1` as Vercel environment variables.
+Push to GitHub → import on **Vercel** (free). Add `MONGODB_URI`, `MONGODB_DB`, `AUTH_SECRET`, and `SIGNUP_CODE` as Vercel environment variables.

@@ -1,39 +1,14 @@
-// Client-side storage abstraction.
+// Client-side storage abstraction for bills.
 //
-// Default: localStorage (works immediately, single device).
-// Cloud mode: set NEXT_PUBLIC_USE_CLOUD=1 (and MONGODB_URI on the server) to
-// sync bills across devices through the /api/bills route.
+// All data is stored in MongoDB via the /api/bills route (requires MONGODB_URI
+// on the server). There is no local-only mode — the app is always cloud-backed.
 
 import { DEFAULT_PROFILE } from "./company";
 import type { Bill, CompanyProfile } from "./types";
 
-const KEY = "vm_bills_v1";
-const PROFILE_KEY = "vm_profile_v1";
-const USE_CLOUD = process.env.NEXT_PUBLIC_USE_CLOUD === "1";
-
+// Kept for the UI badges ("☁ Cloud sync on"). Always true now.
 export function isCloud(): boolean {
-  return USE_CLOUD;
-}
-
-// ---------- localStorage implementation ----------
-function localGetAll(): Bill[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    const list = raw ? (JSON.parse(raw) as Bill[]) : [];
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
-  }
-}
-
-function localWriteAll(bills: Bill[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(bills));
-  } catch {
-    // ignore (private mode / quota)
-  }
+  return true;
 }
 
 // ---------- API (cloud) implementation ----------
@@ -66,34 +41,21 @@ async function apiDelete(id: string): Promise<void> {
 
 // ---------- Public API (uniform, async) ----------
 export async function getAllBills(): Promise<Bill[]> {
-  const bills = USE_CLOUD ? await apiGetAll() : localGetAll();
+  const bills = await apiGetAll();
   return bills.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
 
 export async function getBill(id: string): Promise<Bill | null> {
-  if (USE_CLOUD) return apiGet(id);
-  return localGetAll().find((b) => b.id === id) ?? null;
+  return apiGet(id);
 }
 
 export async function saveBill(bill: Bill): Promise<void> {
   bill.updatedAt = new Date().toISOString();
-  if (USE_CLOUD) {
-    await apiSave(bill);
-    return;
-  }
-  const all = localGetAll();
-  const i = all.findIndex((b) => b.id === bill.id);
-  if (i >= 0) all[i] = bill;
-  else all.push(bill);
-  localWriteAll(all);
+  await apiSave(bill);
 }
 
 export async function deleteBill(id: string): Promise<void> {
-  if (USE_CLOUD) {
-    await apiDelete(id);
-    return;
-  }
-  localWriteAll(localGetAll().filter((b) => b.id !== id));
+  await apiDelete(id);
 }
 
 // ---------- Company profile (single record) ----------
@@ -108,41 +70,23 @@ function mergeProfile(stored: Partial<CompanyProfile> | null): CompanyProfile {
 }
 
 export async function getProfile(): Promise<CompanyProfile> {
-  if (USE_CLOUD) {
-    try {
-      const res = await fetch("/api/profile", { cache: "no-store" });
-      if (res.status === 404) return { ...DEFAULT_PROFILE };
-      if (!res.ok) throw new Error("Failed to load profile");
-      return mergeProfile((await res.json()) as Partial<CompanyProfile>);
-    } catch {
-      return { ...DEFAULT_PROFILE };
-    }
-  }
-  if (typeof window === "undefined") return { ...DEFAULT_PROFILE };
   try {
-    const raw = window.localStorage.getItem(PROFILE_KEY);
-    return mergeProfile(raw ? (JSON.parse(raw) as Partial<CompanyProfile>) : null);
+    const res = await fetch("/api/profile", { cache: "no-store" });
+    if (res.status === 404) return { ...DEFAULT_PROFILE };
+    if (!res.ok) throw new Error("Failed to load profile");
+    return mergeProfile((await res.json()) as Partial<CompanyProfile>);
   } catch {
     return { ...DEFAULT_PROFILE };
   }
 }
 
 export async function saveProfile(profile: CompanyProfile): Promise<void> {
-  if (USE_CLOUD) {
-    const res = await fetch("/api/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(profile),
-    });
-    if (!res.ok) throw new Error("Failed to save profile");
-    return;
-  }
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  } catch {
-    throw new Error("Could not save profile (storage full or blocked)");
-  }
+  const res = await fetch("/api/profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profile),
+  });
+  if (!res.ok) throw new Error("Failed to save profile");
 }
 
 // ---------- Backup helpers (export / import JSON) ----------
