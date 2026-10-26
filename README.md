@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VM Enterprises — GST Billing
 
-## Getting Started
+A GST tax-invoice billing app (Next.js 16 + React 19 + Tailwind v4) for **VM Enterprises · Fire Safety & Solutions**. Create invoices with a fixed company header, live CGST/SGST/IGST calculation, PDF export, and a searchable history of every bill.
 
-First, run the development server:
+> 📋 Design decisions, storage trade-offs, and research are in **[`docs/GST-BILLING-RESEARCH.md`](docs/GST-BILLING-RESEARCH.md)**.
+
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **`/gstbill`** — create a bill (header is fixed; add line items; totals calculate live).
+- **`/gstbill/history`** — list, search, re-open, duplicate, re-download, delete; Export/Import JSON backup.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Fixed company header (edit once in `src/lib/company.ts`).
+- Line items: description, HSN/SAC, qty, unit, rate, GST% → auto taxable / GST / total.
+- Auto **intra-state (CGST+SGST)** vs **inter-state (IGST)** based on Place of Supply.
+- Amount in words (Indian lakh/crore), round-off, auto invoice numbers (`VM/2026-27/001`).
+- **Download PDF** (`@react-pdf/renderer`, real text + ₹ symbol) and **Print / Save as PDF**.
 
-## Learn More
+## Storage
 
-To learn more about Next.js, take a look at the following resources:
+- **Default:** browser (`localStorage`) — works immediately, this device only. Use **Export Backup** regularly.
+- **Cloud sync (multi-device):** free **MongoDB Atlas**. Copy `.env.example` → `.env.local`, fill in `MONGODB_URI`, set `NEXT_PUBLIC_USE_CLOUD=1`, restart.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  lib/        company.ts · types.ts · states.ts · gst.ts · storage.ts · mongodb.ts · pdf/invoicePdf.tsx
+  components/ InvoicePreview.tsx
+  app/
+    gstbill/page.tsx · gstbill/history/page.tsx
+    api/bills/route.ts · api/bills/[id]/route.ts   (cloud sync, active only with MONGODB_URI)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Push to GitHub → import on **Vercel** (free). For cloud sync, add `MONGODB_URI`, `MONGODB_DB`, `NEXT_PUBLIC_USE_CLOUD=1` as Vercel environment variables.
