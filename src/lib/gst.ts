@@ -15,10 +15,19 @@ export function computeItem(item: LineItem): ItemTotals {
   return { taxable, gstAmount, total };
 }
 
-export function computeBill(bill: Bill): BillTotals {
+export function computeBill(
+  bill: Bill,
+  // The supplier's own GST state code — i.e. THIS company's home state. Pass the
+  // live profile.stateCode so the CGST+SGST (intra) vs IGST (inter) split is
+  // correct for every company, not just VM's Rajasthan. Falls back to the
+  // structural default only when a profile hasn't loaded yet.
+  homeStateCode: string = COMPANY.stateCode,
+): BillTotals {
   const placeCode = bill.placeOfSupplyCode || bill.billTo.stateCode;
-  // Intra-state when the place of supply is the supplier's own state.
-  const intraState = placeCode === COMPANY.stateCode;
+  // Intra-state when the place of supply is the supplier's own state. An empty
+  // home state (brand-new company that hasn't set it) can't be intra-state, so
+  // it defaults to IGST until the company sets its state in Settings.
+  const intraState = Boolean(homeStateCode) && placeCode === homeStateCode;
 
   const rows = bill.items.map(computeItem);
   const subtotal = round2(rows.reduce((s, r) => s + r.taxable, 0));

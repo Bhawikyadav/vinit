@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
-import { verifyPassword } from "@/lib/password";
+import { DUMMY_PASSWORD_HASH, verifyPassword } from "@/lib/password";
 import { findUserByEmail } from "@/lib/users";
 
 export async function POST(req: Request) {
@@ -23,8 +23,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // Always run a full password verification — against a dummy hash when the
+    // email is unknown — so the response takes the same time whether or not an
+    // account exists. Otherwise the timing gap would reveal which emails are
+    // registered, even though the error message below is identical for both.
     const user = await findUserByEmail(email);
-    const ok = user ? await verifyPassword(password, user.passwordHash) : false;
+    const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
     if (!user || !ok) {
       return NextResponse.json(
         { error: "Invalid email or password." },

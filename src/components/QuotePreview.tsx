@@ -5,6 +5,7 @@
 
 import { formatAmount, termLines } from "@/lib/quote";
 import { getTemplate, contrastText, tint } from "@/lib/templates";
+import { nameCss } from "@/lib/nameStyle";
 import type { CompanyProfile, Quote, QuoteTotals } from "@/lib/types";
 
 const DARK = "#111827";
@@ -31,7 +32,7 @@ interface TableTheme {
   totalBorderTop?: string;
 }
 
-function QItemsTable({ quote, totals, showUnit, theme }: { quote: Quote; totals: QuoteTotals; showUnit: boolean; theme: TableTheme }) {
+function QItemsTable({ quote, totals, showUnit, showTotal, theme }: { quote: Quote; totals: QuoteTotals; showUnit: boolean; showTotal: boolean; theme: TableTheme }) {
   const totalSpan = showUnit ? 5 : 4;
   const emptySpan = showUnit ? 6 : 5;
   const grid = theme.gridBorder ? { border: `1px solid ${theme.gridBorder}` } : undefined;
@@ -76,10 +77,12 @@ function QItemsTable({ quote, totals, showUnit, theme }: { quote: Quote; totals:
             <td className="p-1 text-right" style={tdStyle}>{formatAmount(totals.freight)}</td>
           </tr>
         )}
-        <tr className="font-bold" style={{ backgroundColor: theme.totalBg, color: theme.totalColor }}>
-          <td className="p-1" colSpan={totalSpan} style={grid ?? { borderTop: theme.totalBorderTop ?? rowTop }}>Total</td>
-          <td className="p-1 text-right" style={grid ?? { borderTop: theme.totalBorderTop ?? rowTop }}>₹ {formatAmount(totals.total)}</td>
-        </tr>
+        {showTotal && (
+          <tr className="font-bold" style={{ backgroundColor: theme.totalBg, color: theme.totalColor }}>
+            <td className="p-1" colSpan={totalSpan} style={grid ?? { borderTop: theme.totalBorderTop ?? rowTop }}>Total</td>
+            <td className="p-1 text-right" style={grid ?? { borderTop: theme.totalBorderTop ?? rowTop }}>₹ {formatAmount(totals.total)}</td>
+          </tr>
+        )}
       </tbody>
     </table>
   );
@@ -153,7 +156,7 @@ function ClassicQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
   return (
     <div className="flex min-h-[1123px] flex-col p-6 text-[11px] leading-snug">
       {logoEl(profile, "mx-auto mb-1 h-14 object-contain")}
-      <h1 className="text-center text-2xl font-bold" style={{ color: accent }}>{profile.name}</h1>
+      <h1 className="text-center text-2xl font-bold" style={{ color: accent, ...nameCss(profile.quote.name) }}>{profile.name}</h1>
       <p className="text-center text-xs font-semibold text-gray-900">{profile.tagline}</p>
       <p className="mt-1 text-center text-[10px] text-gray-700">Work Office: {profile.branchOffice}</p>
       <p className="text-center text-[10px] text-gray-700">Reg. Office: {profile.regOffice}</p>
@@ -175,9 +178,9 @@ function ClassicQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
       <p className="mt-4 font-bold underline">Sub: - {quote.subject}</p>
       <p className="mt-3 font-bold">{quote.heading}</p>
 
-      <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headBg: "#000", headColor: "#fff", gridBorder: GREY, outer: GREY, totalBg: "#000", totalColor: "#fff" }} />
+      <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headBg: "#000", headColor: "#fff", gridBorder: GREY, outer: GREY, totalBg: "#000", totalColor: "#fff" }} />
 
-      <p className="mt-2 text-[10px]"><span className="font-semibold">Amount in words:</span> {totals.amountInWords}</p>
+      {profile.quote.showTotal && <p className="mt-2 text-[10px]"><span className="font-semibold">Amount in words:</span> {totals.amountInWords}</p>}
 
       <Terms terms={terms} />
 
@@ -199,7 +202,7 @@ function BannerQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx) 
         <div className="flex max-w-[62%] items-center gap-3">
           {logoEl(profile, "h-12 object-contain")}
           <div>
-            <h1 className="text-2xl font-bold leading-tight">{profile.name}</h1>
+            <h1 className="text-2xl font-bold leading-tight" style={nameCss(profile.quote.name)}>{profile.name}</h1>
             <p className="text-xs opacity-85">{profile.tagline}</p>
           </div>
         </div>
@@ -228,9 +231,9 @@ function BannerQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx) 
         <p className="mt-3 font-bold" style={{ color: accent }}>Sub: {quote.subject}</p>
         <p className="mt-1 font-bold">{quote.heading}</p>
 
-        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headBg: accent, headColor: onAccent, rowLine: "#e5e7eb", zebra: ["#ffffff", tint(accent, 0.96)], totalBg: accent, totalColor: onAccent }} />
+        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headBg: accent, headColor: onAccent, rowLine: "#e5e7eb", zebra: ["#ffffff", tint(accent, 0.96)], totalBg: accent, totalColor: onAccent }} />
 
-        <p className="mt-2 text-[10px]"><span className="font-semibold">Amount in words:</span> {totals.amountInWords}</p>
+        {profile.quote.showTotal && <p className="mt-2 text-[10px]"><span className="font-semibold">Amount in words:</span> {totals.amountInWords}</p>}
 
         <Terms terms={terms} accentLabel={accent} />
 
@@ -255,7 +258,7 @@ function MinimalQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         <div className="flex items-center gap-2">
           {logoEl(profile, "h-11 object-contain")}
           <div>
-            <h1 className="text-lg font-bold tracking-tight">{profile.name}</h1>
+            <h1 className="text-lg font-bold tracking-tight" style={nameCss(profile.quote.name)}>{profile.name}</h1>
             <p className="text-xs text-gray-500">{profile.tagline}</p>
           </div>
         </div>
@@ -280,9 +283,9 @@ function MinimalQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
       <p className="mt-3 font-bold">{quote.subject}</p>
       <p className="mt-0.5 text-gray-500">{quote.heading}</p>
 
-      <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headColor: GREY, headUpper: true, headBorderBottom: `1px solid ${DARK}`, rowLine: hair, totalBorderTop: `1px solid ${DARK}` }} />
+      <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headColor: GREY, headUpper: true, headBorderBottom: `1px solid ${DARK}`, rowLine: hair, totalBorderTop: `1px solid ${DARK}` }} />
 
-      <p className="mt-2 text-gray-500">{totals.amountInWords}</p>
+      {profile.quote.showTotal && <p className="mt-2 text-gray-500">{totals.amountInWords}</p>}
 
       <Terms terms={terms} />
 
@@ -311,7 +314,7 @@ function SidebarQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
     <div className="flex min-h-[1123px]">
       <div className="w-[150px] shrink-0 p-4" style={{ backgroundColor: accent, color: onAccent }}>
         {logoEl(profile, "mb-2 h-12 object-contain")}
-        <h1 className="text-base font-bold leading-tight">{profile.name}</h1>
+        <h1 className="text-base font-bold leading-tight" style={nameCss(profile.quote.name)}>{profile.name}</h1>
         <p className="text-[10px] opacity-85">{profile.tagline}</p>
         <p className={railLabel}>Office</p>
         <p className="text-[10px]">{profile.branchOffice}</p>
@@ -347,9 +350,9 @@ function SidebarQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         <p className="mt-2.5 font-bold">Sub: {quote.subject}</p>
         <p className="mt-0.5 text-gray-600">{quote.heading}</p>
 
-        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headColor: accent, headUpper: true, headBorderBottom: `1.5px solid ${accent}`, rowLine: "#e5e7eb", totalBg: grandBg }} />
+        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headColor: accent, headUpper: true, headBorderBottom: `1.5px solid ${accent}`, rowLine: "#e5e7eb", totalBg: grandBg }} />
 
-        <p className="mt-2 text-gray-600"><span className="font-semibold">In words: </span>{totals.amountInWords}</p>
+        {profile.quote.showTotal && <p className="mt-2 text-gray-600"><span className="font-semibold">In words: </span>{totals.amountInWords}</p>}
 
         <Terms terms={terms} accentLabel={accent} />
 
@@ -370,7 +373,7 @@ function PremiumQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         <div className="flex max-w-[60%] items-center gap-3">
           {logoEl(profile, "h-12 object-contain")}
           <div>
-            <h1 className="text-2xl font-bold leading-tight text-white">{profile.name}</h1>
+            <h1 className="text-2xl font-bold leading-tight text-white" style={nameCss(profile.quote.name)}>{profile.name}</h1>
             <p className="text-xs tracking-wide text-white">{profile.tagline}</p>
           </div>
         </div>
@@ -400,9 +403,9 @@ function PremiumQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         <p className="mt-3 font-bold">Sub: {quote.subject}</p>
         <p className="mt-0.5 text-gray-500">{quote.heading}</p>
 
-        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headBg: SLATE, headColor: "#fff", headUpper: true, rowLine: "#e5e7eb", totalBg: SLATE, totalColor: "#fff" }} />
+        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headBg: SLATE, headColor: "#fff", headUpper: true, rowLine: "#e5e7eb", totalBg: SLATE, totalColor: "#fff" }} />
 
-        <p className="mt-2 text-gray-500"><span className="font-semibold">Amount in words:</span> {totals.amountInWords}</p>
+        {profile.quote.showTotal && <p className="mt-2 text-gray-500"><span className="font-semibold">Amount in words:</span> {totals.amountInWords}</p>}
 
         <Terms terms={terms} accentLabel={accent} />
 

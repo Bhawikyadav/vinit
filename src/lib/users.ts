@@ -55,3 +55,21 @@ export async function createUser(data: {
   await (await usersCollection()).insertOne(doc);
   return doc;
 }
+
+// Update an existing user's own fields (name / email / passwordHash). Only the
+// keys provided are changed. A duplicate email throws a Mongo 11000 the caller
+// turns into a 409. Returns the updated document.
+export async function updateUser(
+  id: string,
+  patch: { name?: string; email?: string; passwordHash?: string },
+): Promise<UserDoc | null> {
+  const col = await usersCollection();
+  const update: Partial<UserDoc> = {};
+  if (patch.name !== undefined) update.name = patch.name.trim();
+  if (patch.email !== undefined) update.email = normalizeEmail(patch.email);
+  if (patch.passwordHash !== undefined) update.passwordHash = patch.passwordHash;
+  if (Object.keys(update).length > 0) {
+    await col.updateOne({ _id: id }, { $set: update });
+  }
+  return col.findOne({ _id: id });
+}

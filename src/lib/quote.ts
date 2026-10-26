@@ -148,7 +148,8 @@ export function quoteToBill(q: Quote, profile: CompanyProfile): Bill {
   };
 }
 
-// A fresh, empty quotation seeded with sensible defaults for VM Enterprises.
+// A fresh, empty quotation seeded with generic, industry-neutral defaults. The
+// subject/heading are editable per quote, so any company can tailor them.
 export function blankQuote(quoteNo: string): Quote {
   const now = new Date();
   return {
@@ -156,8 +157,8 @@ export function blankQuote(quoteNo: string): Quote {
     quoteNo,
     quoteDate: now.toISOString().slice(0, 10),
     validUntil: "",
-    subject: "Fire Safety Quotation cum Proposal",
-    heading: "Financial Costing for Fire Extinguisher refilling & accessories:",
+    subject: "Quotation cum Proposal",
+    heading: "Financial Costing for the below items:",
     buyerName: "",
     buyerAddress: "",
     items: [blankQuoteItem()],

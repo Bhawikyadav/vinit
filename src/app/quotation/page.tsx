@@ -1,9 +1,10 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import AppBar from "@/components/AppBar";
+import PageHeader from "@/components/ui/PageHeader";
+import Button, { buttonStyles } from "@/components/ui/Button";
+import { IconPlus } from "@/components/dashboard/icons";
 import FitToWidth from "@/components/FitToWidth";
 import QuotePreview from "@/components/QuotePreview";
 import QuotePreviewMobile from "@/components/QuotePreviewMobile";
@@ -24,9 +25,9 @@ import type { CompanyProfile, Quote, QuoteItem } from "@/lib/types";
 // Sentinel select value that switches the Unit field into free-text mode.
 const OTHER_UNIT = "__other__";
 
-// ---- small styled inputs ----
+// ---- small styled inputs (compact, themed to the app tokens) ----
 const inputCls =
-  "w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-blue-500";
+  "w-full rounded-lg border border-hair bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-faint outline-none transition-colors focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
 
 function Text({
   label,
@@ -45,7 +46,7 @@ function Text({
 }) {
   return (
     <label className="block">
-      <span className="mb-0.5 block text-xs font-medium text-gray-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
       <input
         type={type}
         value={value}
@@ -53,7 +54,7 @@ function Text({
         onChange={(e) => onChange(e.target.value)}
         className={inputCls}
       />
-      {hint ? <span className="mt-0.5 block text-[11px] leading-tight text-gray-400">{hint}</span> : null}
+      {hint ? <span className="mt-0.5 block text-[11px] leading-tight text-faint">{hint}</span> : null}
     </label>
   );
 }
@@ -73,7 +74,7 @@ function Area({
 }) {
   return (
     <label className="block">
-      <span className="mb-0.5 block text-xs font-medium text-gray-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
       <textarea
         value={value}
         rows={rows}
@@ -179,7 +180,7 @@ function QuotationInner() {
   );
 
   if (!quote || !totals || !profile) {
-    return <div className="p-8 text-center text-gray-500">Loading…</div>;
+    return <p className="pt-10 text-center text-muted">Loading…</p>;
   }
 
   // ---- mutations ----
@@ -261,46 +262,30 @@ function QuotationInner() {
     }
   }
 
-  const btn =
-    "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50 transition-colors";
+  const statusTone = status.startsWith("✕") ? "text-neg" : status.startsWith("✓") ? "text-pos" : "text-muted";
 
   return (
-    <div className="min-h-screen">
-      <AppBar
-        title={profile.name}
-        subtitle={isCloud() ? "New Quotation · ☁ Cloud sync on" : "New Quotation · saved on this device"}
-        status={status || undefined}
+    <>
+      <PageHeader
+        title={editId ? "Edit quotation" : "New quotation"}
+        subtitle={quote.quoteNo || "Draft"}
+        backHref="/quotation/history"
         actions={
           <>
-            <button className={`${btn} bg-emerald-600 text-white hover:bg-emerald-700`} onClick={save} disabled={busy}>
-              Save
-            </button>
-            <button className={`${btn} bg-blue-600 text-white hover:bg-blue-700`} onClick={downloadPdf} disabled={busy}>
-              Download PDF
-            </button>
-            <button className={`${btn} gap-1.5 bg-gray-700 text-white hover:bg-gray-800`} onClick={() => setShowFull(true)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              View
-            </button>
-            <button className={`${btn} bg-amber-600 text-white hover:bg-amber-700`} onClick={convertToInvoice} disabled={busy}>
-              Convert to Invoice
-            </button>
-            <Link href="/quotation/history" className={`${btn} bg-gray-100 text-gray-700 hover:bg-gray-200`}>
-              All Quotations
-            </Link>
+            <Button variant="secondary" size="sm" onClick={save} disabled={busy}>Save</Button>
+            <Button variant="primary" size="sm" onClick={downloadPdf} disabled={busy}>Download PDF</Button>
           </>
         }
       />
 
-      <div className="grid gap-6 p-4 lg:grid-cols-2">
+      {status && <p className={`-mt-1 mb-4 text-sm ${statusTone}`}>{status}</p>}
+
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* ---------- FORM ---------- */}
         <div className="no-print min-w-0 space-y-5">
           {/* Quotation meta */}
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 font-semibold text-gray-800">Quotation Details</h2>
+          <section className="rounded-2xl border border-hair bg-surface p-4 shadow-card">
+            <h2 className="mb-3 font-semibold text-ink">Quotation details</h2>
             <div className="grid grid-cols-2 gap-3">
               <Text label="Quotation No." value={quote.quoteNo} onChange={(v) => patch({ quoteNo: v })} />
               <Text label="Date" type="date" value={quote.quoteDate} onChange={(v) => patch({ quoteDate: v })} />
@@ -322,8 +307,8 @@ function QuotationInner() {
           </section>
 
           {/* Buyer */}
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 font-semibold text-gray-800">Quotation To (M/s)</h2>
+          <section className="rounded-2xl border border-hair bg-surface p-4 shadow-card">
+            <h2 className="mb-3 font-semibold text-ink">Quotation to (M/s)</h2>
             <div className="space-y-3">
               <Text label="Name" value={quote.buyerName} onChange={(v) => patch({ buyerName: v })} />
               <Area label="Address" value={quote.buyerAddress} onChange={(v) => patch({ buyerAddress: v })} rows={3} />
@@ -331,23 +316,23 @@ function QuotationInner() {
           </section>
 
           {/* Items */}
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
+          <section className="rounded-2xl border border-hair bg-surface p-4 shadow-card">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-800">Items</h2>
-              <button className={`${btn} bg-blue-600 text-white hover:bg-blue-700`} onClick={addItem}>
-                + Add Item
-              </button>
+              <h2 className="font-semibold text-ink">Items</h2>
+              <Button variant="secondary" size="sm" onClick={addItem}>
+                <IconPlus className="h-[18px] w-[18px]" /> Add item
+              </Button>
             </div>
             <div className="space-y-3">
               {quote.items.map((it, i) => {
                 const autoCalc = asNumber(it.qty) !== null && asNumber(it.rate) !== null;
                 return (
-                  <div key={it.id} className="rounded border border-gray-200 p-3">
+                  <div key={it.id} className="rounded-xl border border-hair p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-500">Item {i + 1}</span>
+                      <span className="text-xs font-semibold text-faint">Item {i + 1}</span>
                       {quote.items.length > 1 && (
                         <button
-                          className="text-xs font-medium text-red-600 hover:underline"
+                          className="text-xs font-medium text-neg hover:underline"
                           onClick={() => removeItem(it.id)}
                         >
                           Remove
@@ -361,19 +346,19 @@ function QuotationInner() {
                       <Text label="Qty" value={it.qty} onChange={(v) => patchItem(it.id, { qty: v })} placeholder="e.g. 20 or As per requirement" />
                       {profile.quote.showUnit && (
                         <label className="block">
-                          <span className="mb-0.5 block text-xs font-medium text-gray-600">Unit</span>
+                          <span className="mb-1 block text-xs font-medium text-muted">Unit</span>
                           <UnitPicker value={it.unit} options={unitOptions} onChange={(v) => patchItem(it.id, { unit: v })} />
                         </label>
                       )}
                       <Text label="Rate" value={it.rate} onChange={(v) => patchItem(it.id, { rate: v })} placeholder="e.g. 7600 or 750/mtr" />
                       <div className="col-span-2 md:col-span-3">
                         <label className="block">
-                          <span className="mb-0.5 block text-xs font-medium text-gray-600">
+                          <span className="mb-1 block text-xs font-medium text-muted">
                             Amount (₹){" "}
                             {autoCalc ? (
-                              <span className="font-normal text-gray-400">· auto Qty × Rate</span>
+                              <span className="font-normal text-faint">· auto Qty × Rate</span>
                             ) : (
-                              <span className="font-normal text-gray-400">· enter manually</span>
+                              <span className="font-normal text-faint">· enter manually</span>
                             )}
                           </span>
                           <input
@@ -392,8 +377,8 @@ function QuotationInner() {
           </section>
 
           {/* Freight & terms */}
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 font-semibold text-gray-800">Freight &amp; Terms</h2>
+          <section className="rounded-2xl border border-hair bg-surface p-4 shadow-card">
+            <h2 className="mb-3 font-semibold text-ink">Freight &amp; Terms</h2>
             <div className="space-y-3">
               <Text
                 label="Freight (₹)"
@@ -408,24 +393,40 @@ function QuotationInner() {
                 rows={4}
               />
             </div>
-            <div className="mt-3 rounded bg-gray-50 p-3 text-sm">
+            <div className="mt-3 rounded-xl bg-surface-2 p-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Quotation total (shown to customer)</span>
-                <span className="font-semibold">₹ {formatAmount(totals.total)}</span>
+                <span className="text-muted">Quotation total (shown to customer)</span>
+                <span className="font-semibold tabular-nums text-ink">₹ {formatAmount(totals.total)}</span>
               </div>
-              <div className="mt-1 flex justify-between text-xs text-gray-500">
+              <div className="mt-1 flex justify-between text-xs text-faint">
                 <span>With {totals.gstPercent}% GST (for your reference, not on quote)</span>
-                <span>₹ {formatAmount(totals.withGst)}</span>
+                <span className="tabular-nums">₹ {formatAmount(totals.withGst)}</span>
               </div>
             </div>
           </section>
+
+          {/* Convert — the natural next step once the quote is ready */}
+          <div className="flex">
+            <Button variant="secondary" onClick={convertToInvoice} disabled={busy} className="w-full justify-center sm:w-auto">
+              Convert to GST invoice
+            </Button>
+          </div>
         </div>
 
         {/* ---------- PREVIEW ---------- */}
-        <div className="preview-scroll min-w-0 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1">
-          <p className="no-print mb-2 text-xs text-gray-500">
-            Live preview. Tap <span className="font-medium text-gray-700">Download PDF</span> for the printable A4 copy.
-          </p>
+        <div className="preview-scroll min-w-0 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1">
+          <div className="no-print mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs text-muted">
+              Live preview. Tap <span className="font-medium text-ink">Download PDF</span> for the printable A4 copy.
+            </p>
+            <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setShowFull(true)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              View
+            </Button>
+          </div>
           {/* Phone: a readable, stacked layout */}
           <div className="no-print lg:hidden">
             <QuotePreviewMobile quote={quote} totals={totals} profile={profile} />
@@ -441,21 +442,21 @@ function QuotationInner() {
 
       {/* Full-screen A4 view (original template) */}
       {showFull && (
-        <div className="no-print fixed inset-0 z-50 flex flex-col bg-gray-900/95" role="dialog" aria-modal="true" aria-label="Quotation full view">
+        <div className="no-print fixed inset-0 z-50 flex flex-col bg-ink/95" role="dialog" aria-modal="true" aria-label="Quotation full view">
           <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-3 text-white">
             <span className="truncate text-sm font-medium">Quotation · {quote.quoteNo || "Draft"}</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={downloadPdf}
                 disabled={busy}
-                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className={buttonStyles("primary", "sm")}
               >
                 Download PDF
               </button>
               <button
                 onClick={() => setShowFull(false)}
                 aria-label="Close preview"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
                   <path d="M18 6 6 18M6 6l12 12" />
@@ -475,13 +476,13 @@ function QuotationInner() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 export default function QuotationPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading…</div>}>
+    <Suspense fallback={<p className="pt-10 text-center text-muted">Loading…</p>}>
       <QuotationInner />
     </Suspense>
   );

@@ -5,6 +5,7 @@
 import { formatINR } from "@/lib/gst";
 import { stateLabel } from "@/lib/states";
 import { getTemplate, contrastText, tint } from "@/lib/templates";
+import { nameCss } from "@/lib/nameStyle";
 import type { Bill, BillTotals, CompanyProfile, LineItem, ItemTotals } from "@/lib/types";
 
 const DARK = "#111827";
@@ -156,7 +157,7 @@ function ClassicInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
     <div className="flex min-h-[1123px] flex-col p-6 text-[11px] leading-snug">
       <div className="mb-2 flex flex-col items-center text-center">
         {logoEl(profile, "mb-1 h-14 object-contain")}
-        <h1 className="text-2xl font-bold leading-tight" style={{ color: accent }}>{profile.name}</h1>
+        <h1 className="text-2xl font-bold leading-tight" style={{ color: accent, ...nameCss(profile.invoice.name) }}>{profile.name}</h1>
         <p className="text-xs" style={{ color: MUTED }}>{profile.tagline}</p>
         <p className="mt-1 text-base font-bold">TAX INVOICE</p>
       </div>
@@ -255,7 +256,7 @@ function BannerInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }:
         <div className="flex max-w-[62%] items-center gap-3">
           {logoEl(profile, "h-12 object-contain")}
           <div>
-            <h1 className="text-2xl font-bold leading-tight">{profile.name}</h1>
+            <h1 className="text-2xl font-bold leading-tight" style={nameCss(profile.invoice.name)}>{profile.name}</h1>
             <p className="text-xs opacity-85">{profile.tagline}</p>
           </div>
         </div>
@@ -341,7 +342,7 @@ function MinimalInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
         <div className="flex items-center gap-2">
           {logoEl(profile, "h-11 object-contain")}
           <div>
-            <h1 className="text-lg font-bold tracking-tight">{profile.name}</h1>
+            <h1 className="text-lg font-bold tracking-tight" style={nameCss(profile.invoice.name)}>{profile.name}</h1>
             <p className="text-xs text-gray-500">{profile.tagline}</p>
           </div>
         </div>
@@ -428,7 +429,7 @@ function SidebarInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
     <div className="flex min-h-[1123px]">
       <div className="w-[150px] shrink-0 p-4" style={{ backgroundColor: accent, color: onAccent }}>
         {logoEl(profile, "mb-2 h-12 object-contain")}
-        <h1 className="text-base font-bold leading-tight">{profile.name}</h1>
+        <h1 className="text-base font-bold leading-tight" style={nameCss(profile.invoice.name)}>{profile.name}</h1>
         <p className="text-[10px] opacity-85">{profile.tagline}</p>
         <p className={railLabel}>GSTIN</p>
         <p className="text-[10px]">{profile.gstin}</p>
@@ -522,7 +523,7 @@ function PremiumInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
         <div className="flex max-w-[60%] items-center gap-3">
           {logoEl(profile, "h-12 object-contain")}
           <div>
-            <h1 className="text-2xl font-bold leading-tight text-white">{profile.name}</h1>
+            <h1 className="text-2xl font-bold leading-tight text-white" style={nameCss(profile.invoice.name)}>{profile.name}</h1>
             <p className="text-xs tracking-wide text-white">{profile.tagline}</p>
           </div>
         </div>

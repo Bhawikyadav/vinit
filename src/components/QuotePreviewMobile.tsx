@@ -5,6 +5,7 @@
 
 import { formatAmount, termLines } from "@/lib/quote";
 import { contrastText, tint } from "@/lib/templates";
+import { nameCss } from "@/lib/nameStyle";
 import type { CompanyProfile, Quote, QuoteTotals } from "@/lib/types";
 
 function fmtDate(d: string): string {
@@ -34,7 +35,7 @@ export default function QuotePreviewMobile({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={profile.logo} alt={profile.name} className="mx-auto mb-2 h-10 object-contain" />
         ) : null}
-        <h3 className="text-lg font-bold leading-tight">{profile.name}</h3>
+        <h3 className="text-lg font-bold leading-tight" style={nameCss(profile.quote.name)}>{profile.name}</h3>
         {profile.tagline ? <p className="text-[11px] opacity-90">{profile.tagline}</p> : null}
         <div className="mt-2 inline-block rounded-full bg-white/20 px-3 py-0.5 text-xs font-semibold tracking-wide">
           QUOTATION
@@ -116,15 +117,17 @@ export default function QuotePreviewMobile({
         </div>
 
         {/* Total */}
-        <div className="px-4 py-3" style={{ backgroundColor: tint(accent, 0.94) }}>
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-sm font-semibold text-gray-700">Total (pre-GST)</span>
-            <span className="text-base font-bold" style={{ color: accent }}>
-              ₹ {formatAmount(totals.total)}
-            </span>
+        {profile.quote.showTotal ? (
+          <div className="px-4 py-3" style={{ backgroundColor: tint(accent, 0.94) }}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-semibold text-gray-700">Total (pre-GST)</span>
+              <span className="text-base font-bold" style={{ color: accent }}>
+                ₹ {formatAmount(totals.total)}
+              </span>
+            </div>
+            {totals.amountInWords ? <p className="mt-1 text-[11px] text-gray-500">{totals.amountInWords}</p> : null}
           </div>
-          {totals.amountInWords ? <p className="mt-1 text-[11px] text-gray-500">{totals.amountInWords}</p> : null}
-        </div>
+        ) : null}
 
         {/* Terms */}
         {terms.length > 0 ? (

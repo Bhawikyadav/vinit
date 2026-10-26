@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { COMPANY } from "@/lib/company";
+import { useRouter } from "next/navigation";
+import PageHeader from "@/components/ui/PageHeader";
+import { buttonStyles } from "@/components/ui/Button";
+import { Input } from "@/components/ui/controls";
+import { IconPlus } from "@/components/dashboard/icons";
 import { computeQuote, formatAmount } from "@/lib/quote";
 import { getAllQuotes, saveQuote, deleteQuote } from "@/lib/quoteStorage";
-import { getProfile, isCloud } from "@/lib/storage";
+import { getProfile } from "@/lib/storage";
 import type { Quote } from "@/lib/types";
 
 export default function QuoteHistoryPage() {
@@ -13,6 +17,23 @@ export default function QuoteHistoryPage() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
+  const router = useRouter();
+
+  // Open a quotation in the editor. Used by both the "Open" action and the
+  // whole-card / whole-row click (so the entire card is a hit target).
+  const open = (id: string) => router.push(`/quotation?id=${id}`);
+  const openOnKey = (id: string) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      open(id);
+    }
+  };
+  // Action buttons sit inside the clickable card/row — keep their clicks from
+  // also opening the quotation.
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
 
   async function reload() {
     setLoading(true);
@@ -77,40 +98,40 @@ export default function QuoteHistoryPage() {
     URL.revokeObjectURL(url);
   }
 
-  const btn = "rounded px-3 py-1.5 text-sm font-medium transition-colors";
+  const chip = "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors";
 
   return (
-    <div className="min-h-screen p-4">
-      <header className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="mr-auto text-xl font-bold text-gray-800">All Quotations</h1>
-        <span className="text-xs text-gray-500">
-          {isCloud() ? "☁ Cloud sync on" : "💾 This device only"}
-        </span>
-        <Link href="/quotation" className={`${btn} bg-blue-600 text-white hover:bg-blue-700`}>
-          + New Quotation
-        </Link>
-        <Link href="/" className={`${btn} bg-gray-100 text-gray-700 hover:bg-gray-200`}>
-          Home
-        </Link>
-      </header>
-
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search by quotation no, client, or date…"
-        className="mb-4 w-full max-w-md rounded border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+    <>
+      <PageHeader
+        title="Quotations"
+        subtitle={loading ? "Loading…" : `${quotes.length} quotation${quotes.length === 1 ? "" : "s"}`}
+        actions={
+          <Link href="/quotation" className={buttonStyles("primary", "sm", "hidden sm:inline-flex")}>
+            <IconPlus className="h-[18px] w-[18px]" /> New quotation
+          </Link>
+        }
       />
 
-      {status && <p className="mb-3 text-sm text-gray-700">{status}</p>}
+      <div className="mb-4">
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search by quotation no, client, or subject…"
+          className="sm:max-w-md"
+          aria-label="Search quotations"
+        />
+      </div>
+
+      {status && <p className="mb-3 text-sm text-muted">{status}</p>}
 
       {loading ? (
-        <p className="text-gray-500">Loading…</p>
+        <p className="text-muted">Loading…</p>
       ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center text-gray-500">
+        <div className="rounded-2xl border border-dashed border-hair bg-surface p-10 text-center text-muted">
           {quotes.length === 0 ? (
             <>
               No quotations yet.{" "}
-              <Link href="/quotation" className="font-medium text-blue-600 hover:underline">
+              <Link href="/quotation" className="font-medium text-accent hover:underline">
                 Create your first quotation
               </Link>
               .
@@ -120,53 +141,96 @@ export default function QuoteHistoryPage() {
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-              <tr>
-                <th className="p-3">Quotation No.</th>
-                <th className="p-3">Date</th>
-                <th className="p-3">Client</th>
-                <th className="p-3 text-right">Total (pre-GST)</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((x) => {
-                const t = computeQuote(x);
-                return (
-                  <tr key={x.id} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 font-medium">{x.quoteNo}</td>
-                    <td className="p-3">{x.quoteDate ? new Date(x.quoteDate).toLocaleDateString("en-GB") : "—"}</td>
-                    <td className="p-3">{x.buyerName || "—"}</td>
-                    <td className="p-3 text-right font-semibold">₹ {formatAmount(t.total)}</td>
-                    <td className="p-3">
-                      <div className="flex justify-end gap-2 text-xs">
-                        <Link href={`/quotation?id=${x.id}`} className="font-medium text-blue-600 hover:underline">
-                          Open
-                        </Link>
-                        <button className="font-medium text-gray-600 hover:underline" onClick={() => downloadPdf(x)}>
-                          PDF
-                        </button>
-                        <button className="font-medium text-gray-600 hover:underline" onClick={() => duplicate(x)}>
-                          Duplicate
-                        </button>
-                        <button className="font-medium text-red-600 hover:underline" onClick={() => remove(x)}>
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+        <>
+          {/* Mobile: one card per quotation */}
+          <div className="space-y-3 md:hidden">
+            {filtered.map((x) => {
+              const t = computeQuote(x);
+              return (
+                <div
+                  key={x.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => open(x.id)}
+                  onKeyDown={openOnKey(x.id)}
+                  aria-label={`Open quotation ${x.quoteNo}`}
+                  className="cursor-pointer rounded-2xl border border-hair bg-surface p-4 shadow-card transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-ink">{x.quoteNo}</p>
+                      <p className="truncate text-sm text-muted">{x.buyerName || "—"}</p>
+                    </div>
+                    <p className="shrink-0 text-right font-semibold tabular-nums text-ink">₹ {formatAmount(t.total)}</p>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-faint">
+                    {x.quoteDate ? new Date(x.quoteDate).toLocaleDateString("en-GB") : "—"}
+                    {x.subject ? ` · ${x.subject}` : ""}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-hair pt-3">
+                    <Link href={`/quotation?id=${x.id}`} onClick={(e) => e.stopPropagation()} className={`${chip} bg-accent-weak text-accent`}>
+                      Open
+                    </Link>
+                    <button className={`${chip} bg-surface-2 text-muted hover:text-ink`} onClick={stop(() => downloadPdf(x))}>
+                      PDF
+                    </button>
+                    <button className={`${chip} bg-surface-2 text-muted hover:text-ink`} onClick={stop(() => duplicate(x))}>
+                      Duplicate
+                    </button>
+                    <button className={`${chip} ml-auto text-neg hover:bg-neg-weak`} onClick={stop(() => remove(x))}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-      <p className="mt-4 text-xs text-gray-400">
-        {COMPANY.name} · {quotes.length} quotation(s) stored
-      </p>
-    </div>
+          {/* Desktop: table */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-hair bg-surface shadow-card md:block">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-2 text-left text-xs uppercase tracking-wide text-faint">
+                <tr>
+                  <th className="p-3 font-semibold">Quotation No.</th>
+                  <th className="p-3 font-semibold">Date</th>
+                  <th className="p-3 font-semibold">Client</th>
+                  <th className="p-3 text-right font-semibold">Total (pre-GST)</th>
+                  <th className="p-3 text-right font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((x) => {
+                  const t = computeQuote(x);
+                  return (
+                    <tr
+                      key={x.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => open(x.id)}
+                      onKeyDown={openOnKey(x.id)}
+                      aria-label={`Open quotation ${x.quoteNo}`}
+                      className="cursor-pointer border-t border-hair text-ink outline-none transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
+                    >
+                      <td className="p-3 font-medium">{x.quoteNo}</td>
+                      <td className="p-3 text-muted">{x.quoteDate ? new Date(x.quoteDate).toLocaleDateString("en-GB") : "—"}</td>
+                      <td className="p-3">{x.buyerName || "—"}</td>
+                      <td className="p-3 text-right font-semibold tabular-nums">₹ {formatAmount(t.total)}</td>
+                      <td className="p-3">
+                        <div className="flex justify-end gap-3 text-xs font-medium">
+                          <Link href={`/quotation?id=${x.id}`} onClick={(e) => e.stopPropagation()} className="text-accent hover:underline">Open</Link>
+                          <button className="text-muted hover:text-ink hover:underline" onClick={stop(() => downloadPdf(x))}>PDF</button>
+                          <button className="text-muted hover:text-ink hover:underline" onClick={stop(() => duplicate(x))}>Duplicate</button>
+                          <button className="text-neg hover:underline" onClick={stop(() => remove(x))}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
   );
 }

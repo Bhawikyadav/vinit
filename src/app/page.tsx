@@ -1,67 +1,34 @@
-import Link from "next/link";
-import { COMPANY } from "@/lib/company";
-import UserBar from "@/components/UserBar";
+// The authenticated home is now the sales dashboard. The old quick-action grid
+// (New Bill / All Bills / New Quotation / All Quotations / Company Profile) lives
+// inside the dashboard shell: the rail, the top-bar "New invoice" button, and the
+// mobile "＋" sheet.
+//
+// The dashboard reads today's date (to resolve "this month" / the current FY),
+// so it is a dynamic client surface — a Suspense boundary keeps it out of the
+// static prerender (Next Cache Components) and streams it in behind a silhouette.
+
+import { Suspense } from "react";
+import Dashboard from "@/components/dashboard/Dashboard";
+
+// Rendered inside the shell's <main> while the dashboard streams in, so it needs
+// no page frame of its own — just the content silhouette.
+function DashboardFallback() {
+  return (
+    <div className="animate-pulse space-y-5 pt-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-28 rounded-2xl border border-hair bg-surface shadow-card" />
+        ))}
+      </div>
+      <div className="h-64 rounded-2xl border border-hair bg-surface shadow-card" />
+    </div>
+  );
+}
 
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 p-5 sm:gap-8 sm:p-6">
-      <UserBar />
-      <div>
-        <h1 className="text-2xl font-bold text-red-700 sm:text-3xl">{COMPANY.name}</h1>
-        <p className="text-sm text-gray-600 sm:text-base">{COMPANY.tagline} · Billing &amp; Quotations</p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Link
-          href="/gstbill"
-          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md active:bg-gray-50 sm:p-6"
-        >
-          <div className="text-lg font-semibold text-gray-800">+ New Bill</div>
-          <p className="mt-1 text-sm text-gray-500">
-            Create a GST tax invoice, preview it, and save as PDF.
-          </p>
-        </Link>
-        <Link
-          href="/gstbill/history"
-          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md active:bg-gray-50 sm:p-6"
-        >
-          <div className="text-lg font-semibold text-gray-800">All Bills</div>
-          <p className="mt-1 text-sm text-gray-500">
-            View, search, re-download, and back up every bill you&apos;ve cut.
-          </p>
-        </Link>
-        <Link
-          href="/quotation"
-          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md active:bg-gray-50 sm:p-6"
-        >
-          <div className="text-lg font-semibold text-gray-800">+ New Quotation</div>
-          <p className="mt-1 text-sm text-gray-500">
-            Quote prices without GST — GST is noted as extra. Convert to an invoice in one click.
-          </p>
-        </Link>
-        <Link
-          href="/quotation/history"
-          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md active:bg-gray-50 sm:p-6"
-        >
-          <div className="text-lg font-semibold text-gray-800">All Quotations</div>
-          <p className="mt-1 text-sm text-gray-500">
-            View, search, re-download, and reuse every quotation you&apos;ve sent.
-          </p>
-        </Link>
-        <Link
-          href="/gstbill/settings"
-          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md active:bg-gray-50 sm:p-6"
-        >
-          <div className="text-lg font-semibold text-gray-800">Company Profile</div>
-          <p className="mt-1 text-sm text-gray-500">
-            Edit company details, upload a logo, and choose your invoice template.
-          </p>
-        </Link>
-      </div>
-
-      <p className="text-xs text-gray-400">
-        GSTIN {COMPANY.gstin} · {COMPANY.stateName}
-      </p>
-    </main>
+    <Suspense fallback={<DashboardFallback />}>
+      <Dashboard />
+    </Suspense>
   );
 }

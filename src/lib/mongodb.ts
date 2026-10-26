@@ -17,6 +17,25 @@ export function cloudConfigured(): boolean {
   return Boolean(uri);
 }
 
+// Indexes that enforce and speed up the multi-company model. Every bill/quote is
+// scoped to its owner, so we index on userId; the unique email index is the hard
+// guarantee one email can't own two accounts. Ensured once per process, and
+// best-effort — a transient failure just retries on the next call.
+let indexesEnsured = false;
+async function ensureIndexes(db: Db): Promise<void> {
+  if (indexesEnsured) return;
+  indexesEnsured = true;
+  try {
+    await Promise.all([
+      db.collection("bills").createIndex({ userId: 1, updatedAt: -1 }),
+      db.collection("quotes").createIndex({ userId: 1, updatedAt: -1 }),
+      db.collection("users").createIndex({ email: 1 }, { unique: true }),
+    ]);
+  } catch {
+    indexesEnsured = false; // allow a later retry
+  }
+}
+
 export async function getDb(): Promise<Db> {
   if (!uri) {
     throw new Error(
@@ -31,5 +50,7 @@ export async function getDb(): Promise<Db> {
     })._mongoClientPromise = cached;
   }
   const client = await cached;
-  return client.db(dbName);
+  const db = client.db(dbName);
+  await ensureIndexes(db);
+  return db;
 }

@@ -7,6 +7,15 @@
 // picked independently (profile.template vs profile.quoteTemplate).
 export type TemplateId = "classic" | "banner" | "minimal" | "sidebar" | "premium";
 
+// Per-document typography override for the company-name heading on the printed
+// letterhead. Each field's "unset" value (0 / 0 / false) means "leave the chosen
+// template's built-in styling alone", so the default profile changes nothing.
+export interface NameStyle {
+  fontSize: number; // px on the printed document; 0 = template default
+  fontWeight: number; // 400–800; 0 = template default
+  italic: boolean; // false = template default (upright)
+}
+
 // What to show / hide on a printed INVOICE. Edited from the "Invoice" tab in
 // Settings; the brand assets they reference (signature image, bank details) live
 // on the common CompanyProfile and are shared with the quotation.
@@ -16,14 +25,17 @@ export interface InvoiceDisplay {
   showSignature: boolean; // the uploaded signature / stamp image
   showBankDetails: boolean; // the Bank Details block
   showDeclaration: boolean; // the Declaration text
+  name: NameStyle; // company-name heading styling on the invoice
 }
 
 // What to show / hide on a printed QUOTATION ("Quotation" tab in Settings). A
 // quotation has no discount column, so that toggle is absent here.
 export interface QuoteDisplay {
   showUnit: boolean; // the Unit column
+  showTotal: boolean; // the grand Total row at the foot of the items table
   showSignature: boolean; // the uploaded signature / stamp image
   showBankDetails: boolean; // print the Bank Details block (off by default)
+  name: NameStyle; // company-name heading styling on the quotation
 }
 
 export interface CompanyProfile {

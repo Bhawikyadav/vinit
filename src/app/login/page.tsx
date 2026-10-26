@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { COMPANY } from "@/lib/company";
+import AuthShell, { AuthError, authField, authLabel, authPrimaryBtn } from "@/components/auth/AuthShell";
 
 function LoginForm() {
   const router = useRouter();
@@ -41,15 +41,9 @@ function LoginForm() {
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-    >
-      <h1 className="text-xl font-bold text-red-700">{COMPANY.name}</h1>
-      <p className="mb-5 text-sm text-gray-500">{COMPANY.tagline} · Sign in</p>
-
+    <form onSubmit={submit} className="space-y-4">
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-gray-600">Email</span>
+        <span className={authLabel}>Email</span>
         <input
           type="email"
           value={email}
@@ -57,48 +51,61 @@ function LoginForm() {
           autoFocus
           autoComplete="email"
           required
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          placeholder="you@company.com"
+          className={authField}
         />
       </label>
 
-      <label className="mt-4 block">
-        <span className="mb-1 block text-sm font-medium text-gray-600">Password</span>
+      <label className="block">
+        <span className={authLabel}>Password</span>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           required
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          placeholder="••••••••"
+          className={authField}
         />
       </label>
 
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <AuthError>{error}</AuthError>}
 
-      <button
-        type="submit"
-        disabled={busy}
-        className="mt-4 w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-      >
+      <button type="submit" disabled={busy} className={authPrimaryBtn}>
         {busy ? "Signing in…" : "Sign in"}
       </button>
-
-      <p className="mt-4 text-center text-sm text-gray-500">
-        New here?{" "}
-        <Link href="/signup" className="font-medium text-blue-600 hover:underline">
-          Create an account
-        </Link>
-      </p>
     </form>
+  );
+}
+
+// Keeps the card from collapsing while useSearchParams resolves.
+function FormFallback() {
+  return (
+    <div className="space-y-4" aria-hidden>
+      <div className="h-[66px] rounded-xl bg-surface-2" />
+      <div className="h-[66px] rounded-xl bg-surface-2" />
+      <div className="h-11 rounded-xl bg-surface-2" />
+    </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Suspense fallback={null}>
+    <AuthShell
+      heading="Sign in"
+      sub="Welcome back — enter your details to continue."
+      footer={
+        <>
+          New here?{" "}
+          <Link href="/signup" className="font-semibold text-accent hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <Suspense fallback={<FormFallback />}>
         <LoginForm />
       </Suspense>
-    </main>
+    </AuthShell>
   );
 }

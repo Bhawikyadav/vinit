@@ -16,7 +16,7 @@ export const TEMPLATES: Record<TemplateId, TemplateSpec> = {
   classic: {
     id: "classic",
     name: "Classic",
-    description: "Your original VM Enterprises layout — centred letterhead, dark table header, full borders. Unchanged.",
+    description: "A classic centred letterhead — dark table header, full borders. The traditional Indian tax-invoice look.",
   },
   banner: {
     id: "banner",

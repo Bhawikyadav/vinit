@@ -10,6 +10,40 @@
   --color-foreground: var(--foreground);
 }
 
+/* ---- Dashboard design tokens ----
+   A dark navigation rail (a cooler, deeper neutral than the content) beside a
+   light card canvas. Brand red is an accent only — actions, selection, state.
+   Secondary-text values are chosen to clear 4.5:1 on their own surface. */
+@theme {
+  --color-rail: #0e1627; /* nav rail bg */
+  --color-rail-2: #1b2743; /* hover / raised within the rail */
+  --color-rail-fg: #eef1f7;
+  --color-rail-muted: #97a3bd;
+
+  --color-canvas: #f4f6f9; /* app background behind cards */
+  --color-surface: #ffffff; /* cards */
+  --color-surface-2: #f8fafc; /* inset rows inside a card */
+  --color-hair: #e7eaef; /* hairline borders */
+  --color-ink: #10182b; /* primary text */
+  --color-muted: #59647a; /* secondary text (≥4.5:1 on white) */
+  --color-faint: #6b7589; /* tertiary / small meta (≥4.5:1 on white) */
+
+  --color-accent: #c0392b; /* brand red */
+  --color-accent-fg: #ffffff;
+  --color-accent-weak: #fbe9e7;
+
+  --color-pos: #0a7a47; /* positive delta / in-range */
+  --color-pos-weak: #e6f5ee;
+  --color-warn: #9a5a0b; /* expiring / attention */
+  --color-warn-weak: #fdf1dd;
+  --color-neg: #c0392b; /* negative delta / overdue */
+  --color-neg-weak: #fcebea;
+
+  /* Card depth: a hairline lift plus a soft, far shadow — offset + blur. */
+  --shadow-card: 0 1px 2px rgba(16, 24, 43, 0.05), 0 14px 30px -16px rgba(16, 24, 43, 0.22);
+  --shadow-pop: 0 2px 6px rgba(16, 24, 43, 0.08), 0 20px 40px -18px rgba(16, 24, 43, 0.3);
+}
+
 html {
   /* Stop iOS from inflating text when the phone rotates to landscape. */
   -webkit-text-size-adjust: 100%;
@@ -46,10 +80,19 @@ canvas {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   /* Respect notches / rounded corners when viewport-fit=cover is set. */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+}
+
+/* Tailwind's preflight resets buttons to the default arrow cursor. Give every
+   enabled clickable control the hand cursor app-wide (disabled buttons keep the
+   default). Covers <button>, our role="button" cards/rows, and <summary>. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
 }
 
 /* ---- Mobile form controls ----
@@ -67,6 +110,51 @@ body {
   select {
     min-height: 2.75rem;
   }
+}
+
+/* ---- App shell: fonts + themed browser surfaces ----
+   `.dash` wraps every signed-in page (via AppShell) and the auth pages (via
+   AuthShell), so these tokens theme the whole product. The A4 invoice/quotation
+   "paper" previews set their own fonts and are unaffected. */
+.dash {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  caret-color: var(--color-accent);
+}
+.dash ::selection {
+  background: var(--color-accent-weak);
+  color: var(--color-accent);
+}
+.dash :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+/* The dark rail tints its own selection/focus so they read on navy. */
+.dash-rail ::selection {
+  background: color-mix(in srgb, var(--color-rail-fg) 24%, transparent);
+  color: var(--color-rail-fg);
+}
+.dash-rail :focus-visible {
+  outline-color: var(--color-rail-fg);
+}
+/* Slim, themed scrollbars for scrolling panels (recent lists, etc.). */
+.dash-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #c7cdd8 transparent;
+}
+.dash-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dash-scroll::-webkit-scrollbar-thumb {
+  background: #c7cdd8;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+.dash-scroll::-webkit-scrollbar-thumb:hover {
+  background: #aab2c0;
 }
 
 /* ---- Preview panel: its own scrollbar when the invoice is tall ---- */
@@ -126,5 +214,78 @@ body {
   .fit-inner {
     width: auto !important;
     transform: none !important;
+  }
+}
+
+/* ---- Sales trend: on-mount reveal (dashboard) ----
+   A premium draw-in for SalesTrendChart: the soft volume bars grow up from the
+   baseline (a short left→right stagger), the blue→green trend line draws
+   left→right (pathLength=1 keeps the draw correct at any width), then the latest
+   point pops and sends a soft double "ping". All movement is gated behind
+   prefers-reduced-motion: no-preference, so reduced-motion users get the finished
+   chart (with a quick fade) and never the motion. */
+@keyframes trend-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes trend-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes trend-bar-grow {
+  from { transform: scaleY(0); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+@keyframes trend-dot-in {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes trend-ping {
+  from { opacity: 0.45; transform: scale(1); }
+  to { opacity: 0; transform: scale(2.6); }
+}
+/* Static modern touch — a soft green-leaning glow under the line, every mode. */
+.trend-line {
+  filter: drop-shadow(0 1px 5px color-mix(in srgb, #10b981 36%, transparent));
+}
+.trend-bar {
+  transform-box: fill-box;
+  transform-origin: bottom;
+}
+.trend-dot,
+.trend-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* The ping stays invisible until (and after) its run, so it never sits as a
+   static disc during the start delay. */
+.trend-ping {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .trend-line {
+    stroke-dasharray: 1;
+    animation: trend-draw 950ms cubic-bezier(0.23, 1, 0.32, 1) 150ms both;
+  }
+  .trend-bar {
+    animation: trend-bar-grow 520ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  .trend-label {
+    animation: trend-fade 380ms ease 1180ms both;
+  }
+  .trend-dot {
+    animation: trend-dot-in 320ms cubic-bezier(0.23, 1, 0.32, 1) 1080ms both;
+  }
+  .trend-ping {
+    animation: trend-ping 1200ms cubic-bezier(0.23, 1, 0.32, 1) 1180ms 2 forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trend-svg {
+    animation: trend-fade 200ms ease both;
+  }
+  .trend-ping {
+    display: none;
   }
 }

@@ -19,6 +19,7 @@ import {
 } from "@react-pdf/renderer";
 import { formatAmount, termLines } from "../quote";
 import { getTemplate, contrastText, tint } from "../templates";
+import { namePdfStyle } from "../nameStyle";
 import type { CompanyProfile, Quote, QuoteTotals } from "../types";
 
 // Roboto includes the ₹ (U+20B9) glyph; the default Helvetica does not.
@@ -85,7 +86,7 @@ interface QCtx {
 }
 
 // Shared, themeable quotation items table (header + rows + freight + total).
-function QItemsTable({ quote, totals, showUnit, theme }: { quote: Quote; totals: QuoteTotals; showUnit: boolean; theme: TableTheme }) {
+function QItemsTable({ quote, totals, showUnit, showTotal, theme }: { quote: Quote; totals: QuoteTotals; showUnit: boolean; showTotal: boolean; theme: TableTheme }) {
   const cols = quoteCols(showUnit);
   const totalLabelW = pc(cols.sl + cols.name + cols.qty + cols.unit + cols.rate);
   const cd = (ci: number, last: number) => (theme.cellDivider && ci < last ? { borderRightWidth: 1, borderRightColor: theme.cellDivider } : {});
@@ -149,18 +150,20 @@ function QItemsTable({ quote, totals, showUnit, theme }: { quote: Quote; totals:
         </View>
       ) : null}
       {/* Total */}
-      <View
-        style={[
-          s.row,
-          theme.totalBg ? { backgroundColor: theme.totalBg } : {},
-          theme.totalBorderTop ? { borderTopWidth: theme.totalBorderTop.w, borderTopColor: theme.totalBorderTop.color } : theme.rowLine ? { borderTopWidth: 1, borderTopColor: theme.rowLine } : {},
-        ]}
-      >
-        <Text style={[{ padding: 4, fontSize: 9, fontWeight: "bold", width: totalLabelW, color: theme.totalColor ?? DARK }]}>Total</Text>
-        <Text style={[{ padding: 4, fontSize: 9, fontWeight: "bold", width: pc(cols.amount), textAlign: "right", color: theme.totalColor ?? DARK }]}>
-          ₹ {formatAmount(totals.total)}
-        </Text>
-      </View>
+      {showTotal ? (
+        <View
+          style={[
+            s.row,
+            theme.totalBg ? { backgroundColor: theme.totalBg } : {},
+            theme.totalBorderTop ? { borderTopWidth: theme.totalBorderTop.w, borderTopColor: theme.totalBorderTop.color } : theme.rowLine ? { borderTopWidth: 1, borderTopColor: theme.rowLine } : {},
+          ]}
+        >
+          <Text style={[{ padding: 4, fontSize: 9, fontWeight: "bold", width: totalLabelW, color: theme.totalColor ?? DARK }]}>Total</Text>
+          <Text style={[{ padding: 4, fontSize: 9, fontWeight: "bold", width: pc(cols.amount), textAlign: "right", color: theme.totalColor ?? DARK }]}>
+            ₹ {formatAmount(totals.total)}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -221,7 +224,7 @@ function ClassicQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         // eslint-disable-next-line jsx-a11y/alt-text
         <Image src={profile.logo} style={{ height: 44, objectFit: "contain", alignSelf: "center", marginBottom: 4 }} />
       ) : null}
-      <Text style={{ fontSize: 22, lineHeight: 1.2, fontWeight: "bold", color: accent, textAlign: "center" }}>{profile.name}</Text>
+      <Text style={{ fontSize: 22, lineHeight: 1.2, fontWeight: "bold", color: accent, textAlign: "center", ...namePdfStyle(profile.quote.name) }}>{profile.name}</Text>
       <Text style={{ fontSize: 10, fontWeight: "bold", textAlign: "center", color: DARK, marginBottom: 2 }}>{profile.tagline}</Text>
       <Text style={{ fontSize: 8, textAlign: "center", color: MUTED }}>Work Office: {profile.branchOffice}</Text>
       <Text style={{ fontSize: 8, textAlign: "center", color: MUTED }}>Reg. Office: {profile.regOffice}</Text>
@@ -243,12 +246,14 @@ function ClassicQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
       <Text style={{ marginTop: 12, fontWeight: "bold", textDecoration: "underline" }}>Sub: - {quote.subject}</Text>
       <Text style={{ marginTop: 8, fontWeight: "bold" }}>{quote.heading}</Text>
 
-      <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headBg: "#000000", headColor: "#ffffff", cellDivider: GREY, rowLine: GREY, outer: GREY, totalBg: "#000000", totalColor: "#ffffff" }} />
+      <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headBg: "#000000", headColor: "#ffffff", cellDivider: GREY, rowLine: GREY, outer: GREY, totalBg: "#000000", totalColor: "#ffffff" }} />
 
-      <Text style={{ marginTop: 6, fontSize: 8.5 }}>
-        <Text style={s.bold}>Amount in words: </Text>
-        {totals.amountInWords}
-      </Text>
+      {profile.quote.showTotal && (
+        <Text style={{ marginTop: 6, fontSize: 8.5 }}>
+          <Text style={s.bold}>Amount in words: </Text>
+          {totals.amountInWords}
+        </Text>
+      )}
 
       <Terms terms={terms} />
 
@@ -278,7 +283,7 @@ function BannerQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx) 
             <Image src={profile.logo} style={{ height: 42, objectFit: "contain", marginRight: 10 }} />
           ) : null}
           <View>
-            <Text style={{ fontSize: 19, lineHeight: 1.2, fontWeight: "bold", color: onAccent }}>{profile.name}</Text>
+            <Text style={{ fontSize: 19, lineHeight: 1.2, fontWeight: "bold", color: onAccent, ...namePdfStyle(profile.quote.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 9, color: onAccent, opacity: 0.85 }}>{profile.tagline}</Text>
           </View>
         </View>
@@ -307,12 +312,14 @@ function BannerQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx) 
         <Text style={{ marginTop: 12, fontWeight: "bold", color: accent }}>Sub: {quote.subject}</Text>
         <Text style={{ marginTop: 4, fontWeight: "bold" }}>{quote.heading}</Text>
 
-        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headBg: accent, headColor: onAccent, rowLine: "#e5e7eb", zebra: ["#ffffff", tint(accent, 0.96)], totalBg: accent, totalColor: onAccent }} />
+        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headBg: accent, headColor: onAccent, rowLine: "#e5e7eb", zebra: ["#ffffff", tint(accent, 0.96)], totalBg: accent, totalColor: onAccent }} />
 
-        <Text style={{ marginTop: 6, fontSize: 8.5 }}>
-          <Text style={s.bold}>Amount in words: </Text>
-          {totals.amountInWords}
-        </Text>
+        {profile.quote.showTotal && (
+          <Text style={{ marginTop: 6, fontSize: 8.5 }}>
+            <Text style={s.bold}>Amount in words: </Text>
+            {totals.amountInWords}
+          </Text>
+        )}
 
         <Terms terms={terms} accent={accent} />
 
@@ -344,7 +351,7 @@ function MinimalQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
             <Image src={profile.logo} style={{ height: 34, objectFit: "contain", marginRight: 8 }} />
           ) : null}
           <View>
-            <Text style={{ fontSize: 16, lineHeight: 1.2, fontWeight: "bold", letterSpacing: 0.3 }}>{profile.name}</Text>
+            <Text style={{ fontSize: 16, lineHeight: 1.2, fontWeight: "bold", letterSpacing: 0.3, ...namePdfStyle(profile.quote.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 8.5, color: GREY }}>{profile.tagline}</Text>
           </View>
         </View>
@@ -380,9 +387,9 @@ function MinimalQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
       <Text style={{ marginTop: 12, fontWeight: "bold" }}>{quote.subject}</Text>
       <Text style={{ marginTop: 2, color: GREY }}>{quote.heading}</Text>
 
-      <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headColor: GREY, headUpper: true, headBorderBottom: { w: 1, color: DARK }, rowLine: hair, totalBorderTop: { w: 1, color: DARK } }} />
+      <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headColor: GREY, headUpper: true, headBorderBottom: { w: 1, color: DARK }, rowLine: hair, totalBorderTop: { w: 1, color: DARK } }} />
 
-      <Text style={{ marginTop: 8, color: GREY }}>{totals.amountInWords}</Text>
+      {profile.quote.showTotal && <Text style={{ marginTop: 8, color: GREY }}>{totals.amountInWords}</Text>}
 
       <Terms terms={terms} />
 
@@ -418,7 +425,7 @@ function SidebarQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
           // eslint-disable-next-line jsx-a11y/alt-text
           <Image src={profile.logo} style={{ height: 40, objectFit: "contain", marginBottom: 8 }} />
         ) : null}
-        <Text style={{ color: onAccent, fontSize: 15, lineHeight: 1.2, fontWeight: "bold" }}>{profile.name}</Text>
+        <Text style={{ color: onAccent, fontSize: 15, lineHeight: 1.2, fontWeight: "bold", ...namePdfStyle(profile.quote.name) }}>{profile.name}</Text>
         <Text style={{ color: onAccent, opacity: 0.85, fontSize: 8 }}>{profile.tagline}</Text>
         <Text style={railLabel}>Office</Text>
         <Text style={{ color: onAccent, fontSize: 8 }}>{profile.branchOffice}</Text>
@@ -454,12 +461,14 @@ function SidebarQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         <Text style={{ marginTop: 10, fontWeight: "bold" }}>Sub: {quote.subject}</Text>
         <Text style={{ marginTop: 2, color: MUTED }}>{quote.heading}</Text>
 
-        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headColor: accent, headUpper: true, headBorderBottom: { w: 1.5, color: accent }, rowLine: "#e5e7eb", totalBg: grandBg }} />
+        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headColor: accent, headUpper: true, headBorderBottom: { w: 1.5, color: accent }, rowLine: "#e5e7eb", totalBg: grandBg }} />
 
-        <Text style={{ marginTop: 8, color: MUTED }}>
-          <Text style={s.bold}>In words: </Text>
-          {totals.amountInWords}
-        </Text>
+        {profile.quote.showTotal && (
+          <Text style={{ marginTop: 8, color: MUTED }}>
+            <Text style={s.bold}>In words: </Text>
+            {totals.amountInWords}
+          </Text>
+        )}
 
         <Terms terms={terms} accent={accent} />
 
@@ -487,7 +496,7 @@ function PremiumQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
             <Image src={profile.logo} style={{ height: 42, objectFit: "contain", marginRight: 10 }} />
           ) : null}
           <View>
-            <Text style={{ fontSize: 19, lineHeight: 1.2, fontWeight: "bold", color: "#ffffff" }}>{profile.name}</Text>
+            <Text style={{ fontSize: 19, lineHeight: 1.2, fontWeight: "bold", color: "#ffffff", ...namePdfStyle(profile.quote.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 9, color: "#ffffff", letterSpacing: 0.5 }}>{profile.tagline}</Text>
           </View>
         </View>
@@ -517,12 +526,14 @@ function PremiumQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         <Text style={{ marginTop: 12, fontWeight: "bold" }}>Sub: {quote.subject}</Text>
         <Text style={{ marginTop: 2, color: MUTED }}>{quote.heading}</Text>
 
-        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} theme={{ headBg: SLATE, headColor: "#ffffff", headUpper: true, rowLine: "#e5e7eb", totalBg: SLATE, totalColor: "#ffffff" }} />
+        <QItemsTable quote={quote} totals={totals} showUnit={showUnit} showTotal={profile.quote.showTotal} theme={{ headBg: SLATE, headColor: "#ffffff", headUpper: true, rowLine: "#e5e7eb", totalBg: SLATE, totalColor: "#ffffff" }} />
 
-        <Text style={{ marginTop: 8, color: MUTED }}>
-          <Text style={s.bold}>Amount in words: </Text>
-          {totals.amountInWords}
-        </Text>
+        {profile.quote.showTotal && (
+          <Text style={{ marginTop: 8, color: MUTED }}>
+            <Text style={s.bold}>Amount in words: </Text>
+            {totals.amountInWords}
+          </Text>
+        )}
 
         <Terms terms={terms} accent={accent} dark />
 

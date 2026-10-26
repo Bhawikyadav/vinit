@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { COMPANY } from "@/lib/company";
+import AuthShell, { AuthError, authField, authLabel, authPrimaryBtn } from "@/components/auth/AuthShell";
+import { STATES } from "@/lib/states";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [companyName, setCompanyName] = useState("");
+  const [stateCode, setStateCode] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,10 +25,11 @@ export default function SignupPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, code }),
+        body: JSON.stringify({ companyName, stateCode, name, email, password, code }),
       });
       if (res.ok) {
-        router.push("/");
+        // New company — send them straight to Settings to finish their profile.
+        router.push("/gstbill/settings");
         router.refresh();
       } else {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -39,41 +43,81 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <form
-        onSubmit={submit}
-        className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-      >
-        <h1 className="text-xl font-bold text-red-700">{COMPANY.name}</h1>
-        <p className="mb-5 text-sm text-gray-500">Create your account</p>
+    <AuthShell
+      heading="Create your company"
+      sub="Set up a new, private billing space in under a minute."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-accent hover:underline">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <label className="block">
+          <span className={authLabel}>Company name</span>
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            autoFocus
+            required
+            placeholder="e.g. Acme Traders"
+            className={authField}
+          />
+        </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-600">Your name</span>
+          <span className={authLabel}>State</span>
+          <select
+            value={stateCode}
+            onChange={(e) => setStateCode(e.target.value)}
+            required
+            className={authField}
+          >
+            <option value="" disabled>
+              Select your state…
+            </option>
+            {STATES.map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.name} ({s.code})
+              </option>
+            ))}
+          </select>
+          <span className="mt-1.5 block text-xs text-faint">
+            Decides CGST + SGST vs IGST on your invoices.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className={authLabel}>Your name</span>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            autoFocus
             autoComplete="name"
             required
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className={authField}
           />
         </label>
 
-        <label className="mt-4 block">
-          <span className="mb-1 block text-sm font-medium text-gray-600">Email</span>
+        <label className="block">
+          <span className={authLabel}>Email</span>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            placeholder="you@company.com"
+            className={authField}
           />
         </label>
 
-        <label className="mt-4 block">
-          <span className="mb-1 block text-sm font-medium text-gray-600">Password</span>
+        <label className="block">
+          <span className={authLabel}>Password</span>
           <input
             type="password"
             value={password}
@@ -81,42 +125,29 @@ export default function SignupPage() {
             autoComplete="new-password"
             required
             minLength={8}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            placeholder="At least 8 characters"
+            className={authField}
           />
-          <span className="mt-1 block text-xs text-gray-400">At least 8 characters.</span>
         </label>
 
-        <label className="mt-4 block">
-          <span className="mb-1 block text-sm font-medium text-gray-600">Invite code</span>
+        <label className="block">
+          <span className={authLabel}>Invite code</span>
           <input
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             required
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            placeholder="Ask the owner for the code"
+            className={authField}
           />
-          <span className="mt-1 block text-xs text-gray-400">
-            Ask the owner for the code.
-          </span>
         </label>
 
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {error && <AuthError>{error}</AuthError>}
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-4 w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {busy ? "Creating…" : "Create account"}
+        <button type="submit" disabled={busy} className={authPrimaryBtn}>
+          {busy ? "Creating…" : "Create company"}
         </button>
-
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium text-blue-600 hover:underline">
-            Sign in
-          </Link>
-        </p>
       </form>
-    </main>
+    </AuthShell>
   );
 }

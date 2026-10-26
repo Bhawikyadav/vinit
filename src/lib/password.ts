@@ -12,6 +12,15 @@ import { promisify } from "util";
 const scryptAsync = promisify(scrypt);
 const KEY_LENGTH = 64;
 
+// A fixed, valid-format hash (16-byte salt + 64-byte key, like a real one) used
+// only to equalise login timing: when an email has no account, the login route
+// still runs a full scrypt verification against this so the response takes the
+// same time as a genuine password check. That closes the timing side-channel
+// that would otherwise reveal which emails are registered. No real password can
+// match it, and the caller discards the result when the user is absent anyway.
+export const DUMMY_PASSWORD_HASH =
+  "scrypt$5a2d7314d09bb4b143f54f03df219633$1f9bbf41e6fc2867a8260da74c8c39277e9649ad86205b5ece76c3ff8b3903668eeaba2872f677410dcdea2ec9129985e2791a1ebda35c4fb4b5a1506756f3e7";
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
   const derived = (await scryptAsync(password, salt, KEY_LENGTH)) as Buffer;

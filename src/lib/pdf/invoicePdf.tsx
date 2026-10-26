@@ -21,6 +21,7 @@ import { formatINR } from "../gst";
 import { stateLabel } from "../states";
 import { getTemplate, contrastText, tint } from "../templates";
 import { colWidths } from "../invoiceColumns";
+import { namePdfStyle } from "../nameStyle";
 import type { Bill, BillTotals, CompanyProfile, LineItem, ItemTotals } from "../types";
 
 // Roboto includes the ₹ (U+20B9) glyph; the default Helvetica does not.
@@ -244,7 +245,7 @@ function ClassicInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           // eslint-disable-next-line jsx-a11y/alt-text
           <Image src={profile.logo} style={{ height: 40, objectFit: "contain", marginBottom: 3 }} />
         ) : null}
-        <Text style={{ fontSize: 18, lineHeight: 1.2, fontWeight: "bold", color: accent }}>{profile.name}</Text>
+        <Text style={{ fontSize: 18, lineHeight: 1.2, fontWeight: "bold", color: accent, ...namePdfStyle(profile.invoice.name) }}>{profile.name}</Text>
         <Text style={{ fontSize: 9, color: MUTED }}>{profile.tagline}</Text>
         <Text style={{ fontSize: 12, lineHeight: 1.2, fontWeight: "bold", marginTop: 2 }}>TAX INVOICE</Text>
       </View>
@@ -360,7 +361,7 @@ function BannerInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }:
             <Image src={profile.logo} style={{ height: 40, objectFit: "contain", marginRight: 10 }} />
           ) : null}
           <View>
-            <Text style={{ fontSize: 18, lineHeight: 1.2, fontWeight: "bold", color: onAccent }}>{profile.name}</Text>
+            <Text style={{ fontSize: 18, lineHeight: 1.2, fontWeight: "bold", color: onAccent, ...namePdfStyle(profile.invoice.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 9, color: onAccent, opacity: 0.85 }}>{profile.tagline}</Text>
           </View>
         </View>
@@ -466,7 +467,7 @@ function MinimalInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
             <Image src={profile.logo} style={{ height: 32, objectFit: "contain", marginRight: 8 }} />
           ) : null}
           <View>
-            <Text style={{ fontSize: 15, lineHeight: 1.2, fontWeight: "bold", letterSpacing: 0.3 }}>{profile.name}</Text>
+            <Text style={{ fontSize: 15, lineHeight: 1.2, fontWeight: "bold", letterSpacing: 0.3, ...namePdfStyle(profile.invoice.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 8.5, color: soft }}>{profile.tagline}</Text>
           </View>
         </View>
@@ -572,7 +573,7 @@ function SidebarInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           // eslint-disable-next-line jsx-a11y/alt-text
           <Image src={profile.logo} style={{ height: 40, objectFit: "contain", marginBottom: 8 }} />
         ) : null}
-        <Text style={{ color: onAccent, fontSize: 15, lineHeight: 1.2, fontWeight: "bold" }}>{profile.name}</Text>
+        <Text style={{ color: onAccent, fontSize: 15, lineHeight: 1.2, fontWeight: "bold", ...namePdfStyle(profile.invoice.name) }}>{profile.name}</Text>
         <Text style={{ color: onAccent, opacity: 0.85, fontSize: 8 }}>{profile.tagline}</Text>
 
         <Text style={railLabel}>GSTIN</Text>
@@ -696,7 +697,7 @@ function PremiumInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
             <Image src={profile.logo} style={{ height: 40, objectFit: "contain", marginRight: 10 }} />
           ) : null}
           <View>
-            <Text style={{ fontSize: 18, lineHeight: 1.2, fontWeight: "bold", color: "#ffffff" }}>{profile.name}</Text>
+            <Text style={{ fontSize: 18, lineHeight: 1.2, fontWeight: "bold", color: "#ffffff", ...namePdfStyle(profile.invoice.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 9, color: "#ffffff", letterSpacing: 0.5 }}>{profile.tagline}</Text>
           </View>
         </View>
