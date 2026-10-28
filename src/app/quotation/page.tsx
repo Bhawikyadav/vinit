@@ -8,6 +8,8 @@ import { IconPlus } from "@/components/dashboard/icons";
 import FitToWidth from "@/components/FitToWidth";
 import QuotePreview from "@/components/QuotePreview";
 import QuotePreviewMobile from "@/components/QuotePreviewMobile";
+import PartyAutocomplete from "@/components/PartyAutocomplete";
+import ProductAutocomplete from "@/components/ProductAutocomplete";
 import { nextInvoiceNo, round2 } from "@/lib/gst";
 import {
   asNumber,
@@ -20,7 +22,9 @@ import {
 } from "@/lib/quote";
 import { getAllBills, saveBill, getProfile, isCloud } from "@/lib/storage";
 import { getAllQuotes, getQuote, saveQuote } from "@/lib/quoteStorage";
-import type { CompanyProfile, Quote, QuoteItem } from "@/lib/types";
+import { getAllCustomers } from "@/lib/customerStorage";
+import { getAllProducts } from "@/lib/productStorage";
+import type { CompanyProfile, Customer, Product, Quote, QuoteItem } from "@/lib/types";
 
 // Sentinel select value that switches the Unit field into free-text mode.
 const OTHER_UNIT = "__other__";
@@ -142,9 +146,19 @@ function QuotationInner() {
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [showFull, setShowFull] = useState(false);
+
+  // Saved-customer directory for the buyer-name autocomplete. A quotation only
+  // reads it (its address is free-text and carries no GSTIN, so it isn't a good
+  // source of truth to write back) — invoices are what populate the directory.
+  useEffect(() => {
+    getAllCustomers().then(setCustomers).catch(() => {});
+    getAllProducts().then(setProducts).catch(() => {});
+  }, []);
 
   // Load the company profile, then the existing quote or a fresh one.
   useEffect(() => {
@@ -310,7 +324,14 @@ function QuotationInner() {
           <section className="rounded-2xl border border-hair bg-surface p-4 shadow-card">
             <h2 className="mb-3 font-semibold text-ink">Quotation to (M/s)</h2>
             <div className="space-y-3">
-              <Text label="Name" value={quote.buyerName} onChange={(v) => patch({ buyerName: v })} />
+              <PartyAutocomplete
+                label="Name"
+                value={quote.buyerName}
+                customers={customers}
+                onNameChange={(v) => patch({ buyerName: v })}
+                onSelect={(c) => patch({ buyerName: c.name, buyerAddress: c.address })}
+                placeholder="Type a name to search saved customers…"
+              />
               <Area label="Address" value={quote.buyerAddress} onChange={(v) => patch({ buyerAddress: v })} rows={3} />
             </div>
           </section>
@@ -341,7 +362,16 @@ function QuotationInner() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                       <div className="col-span-2 md:col-span-3">
-                        <Text label="Product Name" value={it.productName} onChange={(v) => patchItem(it.id, { productName: v })} />
+                        <ProductAutocomplete
+                          label="Product Name"
+                          value={it.productName}
+                          products={products}
+                          onNameChange={(v) => patchItem(it.id, { productName: v })}
+                          onSelect={(p) =>
+                            patchItem(it.id, { productName: p.name, unit: p.unit, rate: String(p.rate) })
+                          }
+                          placeholder="Type to search saved products…"
+                        />
                       </div>
                       <Text label="Qty" value={it.qty} onChange={(v) => patchItem(it.id, { qty: v })} placeholder="e.g. 20 or As per requirement" />
                       {profile.quote.showUnit && (

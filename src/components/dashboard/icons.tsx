@@ -138,6 +138,21 @@ export const IconBuilding = (p: IconProps) => (
   </Svg>
 );
 
+export const IconBox = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 2.75 20.25 7v10L12 21.25 3.75 17V7z" />
+    <path d="M3.75 7 12 11.5 20.25 7" />
+    <path d="M12 11.5v9.75" />
+  </Svg>
+);
+
+export const IconUpload = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 15.5V4M12 4 7.5 8.5M12 4l4.5 4.5" />
+    <path d="M4.5 14.5V18A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5v-3.5" />
+  </Svg>
+);
+
 export const IconExternal = (p: IconProps) => (
   <Svg {...p}>
     <path d="M14 4h6v6M20 4l-8.5 8.5" />

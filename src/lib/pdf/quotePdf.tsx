@@ -213,6 +213,21 @@ function QBank({ profile }: { profile: CompanyProfile }) {
   );
 }
 
+// Seller GSTIN / office / contact for the header-led layouts (banner, premium),
+// where the body carries no company block. Mirrors the HTML preview and the
+// classic quotation letterhead. `color`/`opacity` keep each header's palette.
+function HeaderSellerLines({ profile, color, opacity }: { profile: CompanyProfile; color: string; opacity?: number }) {
+  const st = { fontSize: 7.5, color, opacity };
+  return (
+    <View style={{ marginTop: 2 }}>
+      {profile.gstin ? <Text style={st}>GSTIN: {profile.gstin}</Text> : null}
+      <Text style={st}>{profile.regOffice}</Text>
+      {profile.branchOffice ? <Text style={st}>{profile.branchOffice}</Text> : null}
+      <Text style={st}>Phone {profile.phone} · Email {profile.email}</Text>
+    </View>
+  );
+}
+
 // ===========================================================================
 // 1 · CLASSIC — original VM Enterprises quotation (centred letterhead, black
 // header/total bands). Preserved verbatim.
@@ -285,6 +300,7 @@ function BannerQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx) 
           <View>
             <Text style={{ fontSize: 19, lineHeight: 1.2, fontWeight: "bold", color: onAccent, ...namePdfStyle(profile.quote.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 9, color: onAccent, opacity: 0.85 }}>{profile.tagline}</Text>
+            <HeaderSellerLines profile={profile} color={onAccent} opacity={0.85} />
           </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
@@ -361,12 +377,20 @@ function MinimalQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
       <View style={{ borderBottomWidth: 1, borderColor: hair, marginVertical: 12 }} />
 
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        <View style={{ width: "60%" }}>
+        <View style={{ width: "30%" }}>
+          <Text style={label}>From</Text>
+          <Text style={s.bold}>{profile.name}</Text>
+          {profile.gstin ? <Text style={{ color: GREY }}>GSTIN: {profile.gstin}</Text> : null}
+          <Text style={{ color: GREY }}>{profile.regOffice}</Text>
+          <Text style={{ color: GREY }}>{profile.phone}</Text>
+          <Text style={{ color: GREY }}>{profile.email}</Text>
+        </View>
+        <View style={{ width: "36%" }}>
           <Text style={label}>Quotation for</Text>
           <Text style={s.bold}>M/s {quote.buyerName || "—"}</Text>
           <Text style={{ color: GREY }}>{quote.buyerAddress}</Text>
         </View>
-        <View style={{ width: "36%" }}>
+        <View style={{ width: "28%" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <Text style={label}>No.</Text>
             <Text style={s.bold}>{quote.quoteNo}</Text>
@@ -427,6 +451,12 @@ function SidebarQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         ) : null}
         <Text style={{ color: onAccent, fontSize: 15, lineHeight: 1.2, fontWeight: "bold", ...namePdfStyle(profile.quote.name) }}>{profile.name}</Text>
         <Text style={{ color: onAccent, opacity: 0.85, fontSize: 8 }}>{profile.tagline}</Text>
+        {profile.gstin ? (
+          <>
+            <Text style={railLabel}>GSTIN</Text>
+            <Text style={{ color: onAccent, fontSize: 8 }}>{profile.gstin}</Text>
+          </>
+        ) : null}
         <Text style={railLabel}>Office</Text>
         <Text style={{ color: onAccent, fontSize: 8 }}>{profile.branchOffice}</Text>
         <Text style={{ color: onAccent, fontSize: 8, marginTop: 2 }}>{profile.regOffice}</Text>
@@ -498,6 +528,7 @@ function PremiumQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
           <View>
             <Text style={{ fontSize: 19, lineHeight: 1.2, fontWeight: "bold", color: "#ffffff", ...namePdfStyle(profile.quote.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 9, color: "#ffffff", letterSpacing: 0.5 }}>{profile.tagline}</Text>
+            <HeaderSellerLines profile={profile} color="#d1d5db" />
           </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>

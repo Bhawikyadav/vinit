@@ -45,6 +45,7 @@ export default function QuotePreviewMobile({
       <div className="divide-y divide-gray-100">
         {/* Offices / contact */}
         <div className="px-4 py-3 text-[11px] leading-relaxed text-gray-600">
+          {profile.gstin ? <p>GSTIN: {profile.gstin}</p> : null}
           {profile.branchOffice ? <p>Work Office: {profile.branchOffice}</p> : null}
           {profile.regOffice ? <p>Reg. Office: {profile.regOffice}</p> : null}
           <p>

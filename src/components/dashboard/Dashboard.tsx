@@ -14,8 +14,9 @@ import StatTile from "./StatTile";
 import SalesTrendChart from "./SalesTrendChart";
 import Panel from "./Panel";
 import { RecentInvoices, QuotationsPanel, GstBreakup, TopList, ComplianceCard } from "./panels";
+import FollowUpsPanel from "./FollowUpsPanel";
 import { IconPlus } from "./icons";
-import { getAllBills, getProfile } from "@/lib/storage";
+import { getAllBills, getProfile, saveBill } from "@/lib/storage";
 import { getAllQuotes } from "@/lib/quoteStorage";
 import { computeStats, inr, inrCompact, makePeriod, type DashboardStats, type PeriodKey } from "@/lib/stats";
 import { financialYear } from "@/lib/gst";
@@ -55,6 +56,21 @@ export default function Dashboard() {
     [loading, bills, quotes, periodObj, profile.stateCode],
   );
 
+  // Dismiss a follow-up reminder from the dashboard: mark the invoice's reminder
+  // done (optimistically, so the row leaves at once) and persist it. The private
+  // reminder fields never touch the printed invoice, so this is a safe edit.
+  async function markFollowUpDone(id: string) {
+    const target = bills?.find((b) => b.id === id);
+    if (!target) return;
+    const updated: Bill = { ...target, followUpDone: true };
+    setBills((prev) => (prev ? prev.map((b) => (b.id === id ? updated : b)) : prev));
+    try {
+      await saveBill(updated);
+    } catch {
+      setBills((prev) => (prev ? prev.map((b) => (b.id === id ? target : b)) : prev)); // revert on failure
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -76,7 +92,7 @@ export default function Dashboard() {
       ) : !stats.hasInvoices && !stats.hasQuotes ? (
         <Welcome />
       ) : (
-        <DashboardBody stats={stats} profile={profile} period={period} periodLabel={periodObj.label} />
+        <DashboardBody stats={stats} profile={profile} period={period} periodLabel={periodObj.label} onFollowUpDone={markFollowUpDone} />
       )}
     </>
   );
@@ -87,11 +103,13 @@ function DashboardBody({
   profile,
   period,
   periodLabel,
+  onFollowUpDone,
 }: {
   stats: DashboardStats;
   profile: CompanyProfile;
   period: PeriodKey;
   periodLabel: string;
+  onFollowUpDone: (id: string) => void;
 }) {
   const dl = DELTA_LABEL[period];
 
@@ -120,6 +138,9 @@ function DashboardBody({
           sub={`${stats.quotes.count} this period${stats.quotes.expiringSoon ? ` · ${stats.quotes.expiringSoon} expiring` : ""}`}
         />
       </div>
+
+      {/* Follow-ups — action-first, so the next orders to chase sit up top */}
+      <FollowUpsPanel rows={stats.followUps} onDone={onFollowUpDone} />
 
       <div className="grid gap-5 lg:grid-cols-3">
         <Panel title="Sales trend" action={<span className="text-xs tabular-nums text-faint">{periodLabel}</span>} className="lg:col-span-2" bodyClassName="pt-3">

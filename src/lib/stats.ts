@@ -108,6 +108,17 @@ export interface QuoteRow {
   expired: boolean;
 }
 
+// A pending private follow-up reminder, surfaced on the dashboard. Not period-
+// limited — a reminder is about the future, independent of the sales window.
+export interface FollowUpRow {
+  id: string; // the bill id (links back to the invoice)
+  no: string; // invoice number
+  customer: string;
+  date: string; // yyyy-mm-dd follow-up date
+  note: string; // private reason, "" if none
+  amount: number; // the invoice grand total, for context
+}
+
 export interface Delta {
   pct: number; // signed fraction, e.g. 0.127 = +12.7%
   prev: number;
@@ -125,6 +136,7 @@ export interface DashboardStats {
   recentQuotes: QuoteRow[];
   topCustomers: TopEntry[];
   topItems: TopEntry[];
+  followUps: FollowUpRow[]; // pending reminders, soonest/overdue first
   hasInvoices: boolean;
   hasQuotes: boolean;
 }
@@ -258,6 +270,22 @@ export function computeStats(
     .slice(0, 5)
     .map(quoteRow);
 
+  // --- Follow-up reminders: every pending one, soonest (incl. overdue) first.
+  // Independent of the sales period — a reminder is about the next order, not the
+  // window being viewed. yyyy-mm-dd sorts chronologically as plain strings.
+  const followUps: FollowUpRow[] = bills
+    .filter((b) => (b.followUpDate ?? "") !== "" && !b.followUpDone)
+    .sort((a, b) => (a.followUpDate! < b.followUpDate! ? -1 : a.followUpDate! > b.followUpDate! ? 1 : 0))
+    .slice(0, 8)
+    .map((b) => ({
+      id: b.id,
+      no: b.invoiceNo,
+      customer: b.billTo.name || "—",
+      date: b.followUpDate!,
+      note: b.followUpNote || "",
+      amount: computeBill(b, homeStateCode).grandTotal,
+    }));
+
   // Pipeline: value of quotes raised in the period that haven't expired.
   const curQuotes = quotes.filter((q) => inWindow(parseDate(q.quoteDate), period.start, period.end));
   const liveQuotes = curQuotes.map(quoteRow).filter((q) => !q.expired);
@@ -276,6 +304,7 @@ export function computeStats(
     recentQuotes,
     topCustomers,
     topItems,
+    followUps,
     hasInvoices: bills.length > 0,
     hasQuotes: quotes.length > 0,
   };

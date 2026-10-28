@@ -11,7 +11,7 @@
 // one header per page. Auth routes (/login, /signup) bring their own full-screen
 // AuthShell, so the chrome steps aside for them.
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getProfile } from "@/lib/storage";
@@ -19,7 +19,7 @@ import { DEFAULT_PROFILE } from "@/lib/company";
 import { BRAND } from "@/lib/brand";
 import type { CompanyProfile } from "@/lib/types";
 import {
-  IconGrid, IconReceipt, IconFile, IconBuilding, IconPlus, IconClose,
+  IconGrid, IconReceipt, IconFile, IconUsers, IconBox, IconBuilding, IconPlus, IconClose,
 } from "@/components/dashboard/icons";
 
 interface NavItem {
@@ -31,6 +31,8 @@ interface NavItem {
 const RECORDS: NavItem[] = [
   { href: "/gstbill/history", label: "Invoices", icon: IconReceipt },
   { href: "/quotation/history", label: "Quotations", icon: IconFile },
+  { href: "/customers", label: "Customers", icon: IconUsers },
+  { href: "/products", label: "Products", icon: IconBox },
 ];
 
 // Routes that render their own full-screen frame — the chrome steps aside.
@@ -64,6 +66,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_PROFILE);
   const [me, setMe] = useState("");
   const [sheet, setSheet] = useState(false);
+  // Mobile top-bar account menu (collapses Customers / Products / Profile).
+  const [menu, setMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Load the company identity once for the rail. Skipped on auth routes (no
   // session yet, and the request would just 401). Because the shell never
@@ -81,14 +86,28 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [bare]);
 
-  // Close the create sheet on Escape. (Navigating from it closes it via the
-  // links' own onClick — its backdrop covers the tab bar, so a sheet link is
-  // the only way to leave while it is open.)
+  // Close the create sheet / account menu on Escape. (Navigating from them closes
+  // them via the links' own onClick.)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSheet(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSheet(false);
+        setMenu(false);
+      }
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  // Close the account menu when the pointer goes down outside it.
+  useEffect(() => {
+    if (!menu) return;
+    const onDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [menu]);
 
   // Keep the rail's shown name in sync when the account page saves a change.
   useEffect(() => {
@@ -109,6 +128,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+
+  // Is the user on any of the pages the account menu links to? (Tints the avatar.)
+  const menuActive = isActive("/customers") || isActive("/products") || isActive("/account");
 
   const railLink = (item: NavItem) => {
     const active = isActive(item.href);
@@ -188,13 +210,35 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <BrandMark logo={logo} name={companyName} />
             <span className="min-w-0 truncate text-sm font-semibold text-ink">{companyName}</span>
           </Link>
-          <Link
-            href="/account"
-            aria-label="Your account"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xs font-semibold text-ink ring-1 ring-hair transition-colors hover:bg-hair"
-          >
-            {(userName[0] || "·").toUpperCase()}
-          </Link>
+          <div className="relative shrink-0" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenu((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={menu}
+              aria-label="Account menu"
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold text-ink ring-1 transition-colors ${
+                menu || menuActive ? "bg-accent-weak ring-accent/40" : "bg-surface-2 ring-hair hover:bg-hair"
+              }`}
+            >
+              {(userName[0] || "·").toUpperCase()}
+            </button>
+            {menu && (
+              <div
+                role="menu"
+                aria-label="Account"
+                className="bm-combo-pop absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl border border-hair bg-surface py-1 shadow-pop"
+              >
+                <div className="border-b border-hair px-3 py-2.5">
+                  <p className="truncate text-sm font-semibold text-ink">{userName}</p>
+                  <p className="truncate text-xs text-faint">{companyName}</p>
+                </div>
+                <MenuItem href="/customers" label="Customers" active={isActive("/customers")} icon={<IconUsers className="h-[18px] w-[18px]" />} onPick={() => setMenu(false)} />
+                <MenuItem href="/products" label="Products" active={isActive("/products")} icon={<IconBox className="h-[18px] w-[18px]" />} onPick={() => setMenu(false)} />
+                <MenuItem href="/account" label="Profile details" active={isActive("/account")} icon={<IconUser className="h-[18px] w-[18px]" />} onPick={() => setMenu(false)} />
+              </div>
+            )}
+          </div>
         </header>
         <main className="mx-auto max-w-[1200px] px-4 pb-28 sm:px-6 lg:pb-10">{children}</main>
       </div>
@@ -238,6 +282,39 @@ export default function AppShell({ children }: { children: ReactNode }) {
       )}
 
     </div>
+  );
+}
+
+// One row in the mobile account menu.
+function MenuItem({
+  href, label, icon, active, onPick,
+}: {
+  href: string; label: string; icon: ReactNode; active: boolean; onPick: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      role="menuitem"
+      aria-current={active ? "page" : undefined}
+      onClick={onPick}
+      className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${
+        active ? "bg-accent-weak text-accent" : "text-ink hover:bg-surface-2"
+      }`}
+    >
+      <span className={active ? "text-accent" : "text-muted"}>{icon}</span>
+      {label}
+    </Link>
+  );
+}
+
+// Single-person glyph for the "Profile details" item (IconUsers is the plural,
+// used for Customers — this keeps the two visually distinct).
+function IconUser({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c.8-3.7 3.4-5.6 7-5.6s6.2 1.9 7 5.6" />
+    </svg>
   );
 }
 

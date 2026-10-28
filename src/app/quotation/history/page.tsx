@@ -10,6 +10,7 @@ import { IconPlus } from "@/components/dashboard/icons";
 import { computeQuote, formatAmount } from "@/lib/quote";
 import { getAllQuotes, saveQuote, deleteQuote } from "@/lib/quoteStorage";
 import { getProfile } from "@/lib/storage";
+import DuplicateTemplateDialog from "@/components/DuplicateTemplateDialog";
 import type { Quote } from "@/lib/types";
 
 export default function QuoteHistoryPage() {
@@ -17,6 +18,7 @@ export default function QuoteHistoryPage() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
+  const [dupTarget, setDupTarget] = useState<Quote | null>(null);
   const router = useRouter();
 
   // Open a quotation in the editor. Used by both the "Open" action and the
@@ -63,7 +65,10 @@ export default function QuoteHistoryPage() {
     );
   }, [quotes, q]);
 
-  async function duplicate(x: Quote) {
+  // `useCurrentTemplate` true → the copy adopts the current default quotation
+  // template & accent from the company profile; false → it keeps the snapshot it
+  // was made in. The original is cloned either way; only the template differs.
+  async function duplicate(x: Quote, useCurrentTemplate: boolean) {
     const now = new Date();
     const copy: Quote = {
       ...structuredClone(x),
@@ -72,7 +77,13 @@ export default function QuoteHistoryPage() {
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     };
+    if (useCurrentTemplate) {
+      const profile = await getProfile();
+      copy.template = profile.quoteTemplate;
+      copy.accentColor = profile.accentColor;
+    }
     await saveQuote(copy);
+    setDupTarget(null);
     setStatus(`Duplicated ${x.quoteNo}`);
     reload();
   }
@@ -174,7 +185,7 @@ export default function QuoteHistoryPage() {
                     <button className={`${chip} bg-surface-2 text-muted hover:text-ink`} onClick={stop(() => downloadPdf(x))}>
                       PDF
                     </button>
-                    <button className={`${chip} bg-surface-2 text-muted hover:text-ink`} onClick={stop(() => duplicate(x))}>
+                    <button className={`${chip} bg-surface-2 text-muted hover:text-ink`} onClick={stop(() => setDupTarget(x))}>
                       Duplicate
                     </button>
                     <button className={`${chip} ml-auto text-neg hover:bg-neg-weak`} onClick={stop(() => remove(x))}>
@@ -219,7 +230,7 @@ export default function QuoteHistoryPage() {
                         <div className="flex justify-end gap-3 text-xs font-medium">
                           <Link href={`/quotation?id=${x.id}`} onClick={(e) => e.stopPropagation()} className="text-accent hover:underline">Open</Link>
                           <button className="text-muted hover:text-ink hover:underline" onClick={stop(() => downloadPdf(x))}>PDF</button>
-                          <button className="text-muted hover:text-ink hover:underline" onClick={stop(() => duplicate(x))}>Duplicate</button>
+                          <button className="text-muted hover:text-ink hover:underline" onClick={stop(() => setDupTarget(x))}>Duplicate</button>
                           <button className="text-neg hover:underline" onClick={stop(() => remove(x))}>Delete</button>
                         </div>
                       </td>
@@ -230,6 +241,15 @@ export default function QuoteHistoryPage() {
             </table>
           </div>
         </>
+      )}
+
+      {dupTarget && (
+        <DuplicateTemplateDialog
+          docLabel={`quotation ${dupTarget.quoteNo}`}
+          onUseCurrent={() => duplicate(dupTarget, true)}
+          onKeepOriginal={() => duplicate(dupTarget, false)}
+          onCancel={() => setDupTarget(null)}
+        />
       )}
     </>
   );

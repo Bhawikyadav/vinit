@@ -17,6 +17,7 @@ import {
   importJSON,
   getProfile,
 } from "@/lib/storage";
+import DuplicateTemplateDialog from "@/components/DuplicateTemplateDialog";
 import type { Bill } from "@/lib/types";
 
 export default function HistoryPage() {
@@ -24,6 +25,7 @@ export default function HistoryPage() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
+  const [dupTarget, setDupTarget] = useState<Bill | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -71,7 +73,10 @@ export default function HistoryPage() {
     );
   }, [bills, q]);
 
-  async function duplicate(b: Bill) {
+  // `useCurrentTemplate` true → the copy adopts the current default template &
+  // accent from the company profile; false → it keeps the snapshot it was made
+  // in. The original is cloned either way; only the template fields differ.
+  async function duplicate(b: Bill, useCurrentTemplate: boolean) {
     const now = new Date();
     const copy: Bill = {
       ...structuredClone(b),
@@ -80,7 +85,13 @@ export default function HistoryPage() {
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     };
+    if (useCurrentTemplate) {
+      const profile = await getProfile();
+      copy.template = profile.template;
+      copy.accentColor = profile.accentColor;
+    }
     await saveBill(copy);
+    setDupTarget(null);
     setStatus(`Duplicated ${b.invoiceNo}`);
     reload();
   }
@@ -215,7 +226,7 @@ export default function HistoryPage() {
                     <button className={`${chip} bg-surface-2 text-muted hover:text-ink`} onClick={stop(() => downloadPdf(b))}>
                       PDF
                     </button>
-                    <button className={`${chip} bg-surface-2 text-muted hover:text-ink`} onClick={stop(() => duplicate(b))}>
+                    <button className={`${chip} bg-surface-2 text-muted hover:text-ink`} onClick={stop(() => setDupTarget(b))}>
                       Duplicate
                     </button>
                     <button className={`${chip} ml-auto text-neg hover:bg-neg-weak`} onClick={stop(() => remove(b))}>
@@ -264,7 +275,7 @@ export default function HistoryPage() {
                         <div className="flex justify-end gap-3 text-xs font-medium">
                           <Link href={`/gstbill?id=${b.id}`} onClick={(e) => e.stopPropagation()} className="text-accent hover:underline">Open</Link>
                           <button className="text-muted hover:text-ink hover:underline" onClick={stop(() => downloadPdf(b))}>PDF</button>
-                          <button className="text-muted hover:text-ink hover:underline" onClick={stop(() => duplicate(b))}>Duplicate</button>
+                          <button className="text-muted hover:text-ink hover:underline" onClick={stop(() => setDupTarget(b))}>Duplicate</button>
                           <button className="text-neg hover:underline" onClick={stop(() => remove(b))}>Delete</button>
                         </div>
                       </td>
@@ -275,6 +286,15 @@ export default function HistoryPage() {
             </table>
           </div>
         </>
+      )}
+
+      {dupTarget && (
+        <DuplicateTemplateDialog
+          docLabel={`invoice ${dupTarget.invoiceNo}`}
+          onUseCurrent={() => duplicate(dupTarget, true)}
+          onKeepOriginal={() => duplicate(dupTarget, false)}
+          onCancel={() => setDupTarget(null)}
+        />
       )}
     </>
   );

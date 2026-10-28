@@ -151,6 +151,21 @@ const logoEl = (profile: CompanyProfile, cls: string) =>
     <img src={profile.logo} alt={profile.name} className={cls} />
   ) : null;
 
+// Seller GSTIN / office / contact for the header-led layouts (banner, premium),
+// where the body carries no company block. Mirrors the identity the classic
+// quotation letterhead prints so the buyer can see the GSTIN, address and contact.
+// `cls` sets the colour/scale so each header keeps its palette (on-accent vs. on-dark).
+function HeaderSellerLines({ profile, cls }: { profile: CompanyProfile; cls: string }) {
+  return (
+    <div className={`mt-1 ${cls}`}>
+      {profile.gstin && <p>GSTIN: {profile.gstin}</p>}
+      <p>{profile.regOffice}</p>
+      {profile.branchOffice && <p>{profile.branchOffice}</p>}
+      <p>Phone {profile.phone} · Email {profile.email}</p>
+    </div>
+  );
+}
+
 // 1 · CLASSIC — original black-band quotation
 function ClassicQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx) {
   return (
@@ -204,6 +219,7 @@ function BannerQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx) 
           <div>
             <h1 className="text-2xl font-bold leading-tight" style={nameCss(profile.quote.name)}>{profile.name}</h1>
             <p className="text-xs opacity-85">{profile.tagline}</p>
+            <HeaderSellerLines profile={profile} cls="text-[9px] leading-snug opacity-85" />
           </div>
         </div>
         <div className="text-right">
@@ -268,12 +284,20 @@ function MinimalQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
       <div className="my-3 border-b" style={{ borderColor: hair }} />
 
       <div className="flex justify-between">
-        <div className="w-[60%]">
+        <div className="w-[30%]">
+          <p className={labelCls}>From</p>
+          <p className="font-semibold">{profile.name}</p>
+          {profile.gstin && <p className="text-gray-500">GSTIN: {profile.gstin}</p>}
+          <p className="text-gray-500">{profile.regOffice}</p>
+          <p className="text-gray-500">{profile.phone}</p>
+          <p className="text-gray-500">{profile.email}</p>
+        </div>
+        <div className="w-[36%]">
           <p className={labelCls}>Quotation for</p>
           <p className="font-semibold">M/s {quote.buyerName || "—"}</p>
           <p className="whitespace-pre-line text-gray-500">{quote.buyerAddress}</p>
         </div>
-        <div className="w-[36%]">
+        <div className="w-[28%]">
           <div className="flex justify-between"><span className={labelCls}>No.</span><span className="font-semibold">{quote.quoteNo}</span></div>
           <div className="flex justify-between"><span className={labelCls}>Date</span><span className="font-semibold">{fmtDate(quote.quoteDate) || "—"}</span></div>
           {quote.validUntil && <div className="flex justify-between"><span className={labelCls}>Valid until</span><span className="font-semibold">{fmtDate(quote.validUntil)}</span></div>}
@@ -316,6 +340,12 @@ function SidebarQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
         {logoEl(profile, "mb-2 h-12 object-contain")}
         <h1 className="text-base font-bold leading-tight" style={nameCss(profile.quote.name)}>{profile.name}</h1>
         <p className="text-[10px] opacity-85">{profile.tagline}</p>
+        {profile.gstin && (
+          <>
+            <p className={railLabel}>GSTIN</p>
+            <p className="text-[10px]">{profile.gstin}</p>
+          </>
+        )}
         <p className={railLabel}>Office</p>
         <p className="text-[10px]">{profile.branchOffice}</p>
         <p className="mt-0.5 text-[10px]">{profile.regOffice}</p>
@@ -375,6 +405,7 @@ function PremiumQuote({ quote, totals, profile, accent, terms, showUnit }: QCtx)
           <div>
             <h1 className="text-2xl font-bold leading-tight text-white" style={nameCss(profile.quote.name)}>{profile.name}</h1>
             <p className="text-xs tracking-wide text-white">{profile.tagline}</p>
+            <HeaderSellerLines profile={profile} cls="text-[9px] leading-snug text-gray-300" />
           </div>
         </div>
         <div className="text-right">

@@ -29,6 +29,7 @@ async function ensureIndexes(db: Db): Promise<void> {
     await Promise.all([
       db.collection("bills").createIndex({ userId: 1, updatedAt: -1 }),
       db.collection("quotes").createIndex({ userId: 1, updatedAt: -1 }),
+      db.collection("customers").createIndex({ userId: 1, name: 1 }),
       db.collection("users").createIndex({ email: 1 }, { unique: true }),
     ]);
   } catch {

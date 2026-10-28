@@ -289,3 +289,93 @@ summary {
     display: none;
   }
 }
+
+/* ---- Party autocomplete: suggestions pop-in ----
+   A short entrance for the customer-suggestion dropdown under the Bill To / buyer
+   name fields. Gated behind prefers-reduced-motion: no-preference so
+   reduced-motion users get the list instantly (same approach as the trend chart). */
+@keyframes bm-combo-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.bm-combo-pop {
+  transform-origin: top;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bm-combo-pop {
+    animation: bm-combo-pop 130ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+}
+
+/* ---- Side drawer: slide in from the right (+ backdrop fade) ----
+   Used by the bulk "Add products" drawer. Same reduced-motion gating as above:
+   reduced-motion users get the panel in place with no slide. */
+@keyframes bm-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes bm-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bm-drawer-pop {
+    animation: bm-drawer-in 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .bm-drawer-backdrop {
+    animation: bm-backdrop-in 220ms ease both;
+  }
+}
+
+/* ---- Follow-ups panel: row entrance (stagger) + Done collapse ----
+   Entrance: each reminder row lifts + fades in, a 55ms-per-row cascade set via an
+   inline animation-delay. Exit: the actioned row fades, slides right and collapses
+   its height so the rows below glide up instead of teleporting, inside the ~240ms
+   the component waits before dropping it. All gated behind no-preference; reduced-
+   motion keeps a plain fade and no movement. Matches the trend-chart convention. */
+@keyframes followup-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes followup-out {
+  0% { opacity: 1; transform: translateX(0); max-height: 72px; padding-top: 0.625rem; padding-bottom: 0.625rem; }
+  45% { opacity: 0; transform: translateX(10px); }
+  100% { opacity: 0; transform: translateX(10px); max-height: 0; padding-top: 0; padding-bottom: 0; }
+}
+@keyframes followup-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.followup-row-out {
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .followup-row {
+    animation: followup-in 360ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  .followup-row-out {
+    animation: followup-out 240ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .followup-row {
+    animation: trend-fade 220ms ease both;
+  }
+  .followup-row-out {
+    animation: followup-fade-out 160ms ease both;
+  }
+}

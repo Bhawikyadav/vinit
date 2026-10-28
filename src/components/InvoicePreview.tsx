@@ -6,6 +6,7 @@ import { formatINR } from "@/lib/gst";
 import { stateLabel } from "@/lib/states";
 import { getTemplate, contrastText, tint } from "@/lib/templates";
 import { nameCss } from "@/lib/nameStyle";
+import { partyAddress } from "@/lib/types";
 import type { Bill, BillTotals, CompanyProfile, LineItem, ItemTotals } from "@/lib/types";
 
 const DARK = "#111827";
@@ -148,6 +149,21 @@ const logoEl = (profile: CompanyProfile, cls: string) =>
     <img src={profile.logo} alt={profile.name} className={cls} />
   ) : null;
 
+// Seller GSTIN / address / contact for the header-led layouts (banner, premium),
+// where the body carries no company block. Mirrors the identity the classic
+// letterhead prints so the buyer can always see the GSTIN, address and contact.
+// `cls` sets the colour/scale so each header keeps its palette (on-accent vs. on-dark).
+function HeaderSellerLines({ profile, cls }: { profile: CompanyProfile; cls: string }) {
+  return (
+    <div className={`mt-1 ${cls}`}>
+      <p>GSTIN: {profile.gstin}</p>
+      <p>{profile.regOffice}</p>
+      {profile.branchOffice && <p>{profile.branchOffice}</p>}
+      <p>Phone {profile.phone} · Email {profile.email}</p>
+    </div>
+  );
+}
+
 // 1 · CLASSIC — original layout
 function ClassicInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }: Ctx) {
   const bc = "#9ca3af";
@@ -191,7 +207,7 @@ function ClassicInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
             <div className="border-b p-1 font-bold" style={{ borderColor: bc, backgroundColor: partyHeadBg }}>{col.title}</div>
             <div className="min-h-[70px] p-2">
               <p className="font-semibold">{col.p.name || "—"}</p>
-              <p className="whitespace-pre-line">{col.p.address}</p>
+              <p className="whitespace-pre-line">{partyAddress(col.p)}</p>
               <p>GSTIN/UIN: {col.p.gstin || "—"}</p>
               <p>State &amp; Code: {stateLabel(col.p.stateCode) || "—"}</p>
             </div>
@@ -258,6 +274,7 @@ function BannerInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }:
           <div>
             <h1 className="text-2xl font-bold leading-tight" style={nameCss(profile.invoice.name)}>{profile.name}</h1>
             <p className="text-xs opacity-85">{profile.tagline}</p>
+            <HeaderSellerLines profile={profile} cls="text-[9px] leading-snug opacity-85" />
           </div>
         </div>
         <div className="text-right">
@@ -285,7 +302,7 @@ function BannerInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }:
             <div key={col.title} className="w-1/2 p-2" style={{ backgroundColor: tint(accent, 0.92), borderLeft: `3px solid ${accent}` }}>
               <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ color: accent }}>{col.title}</p>
               <p className="font-semibold">{col.p.name || "—"}</p>
-              <p className="whitespace-pre-line">{col.p.address}</p>
+              <p className="whitespace-pre-line">{partyAddress(col.p)}</p>
               <p>GSTIN/UIN: {col.p.gstin || "—"}</p>
               <p>State: {stateLabel(col.p.stateCode) || "—"}</p>
             </div>
@@ -358,11 +375,12 @@ function MinimalInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <p className="text-gray-500">GSTIN: {profile.gstin}</p>
           <p className="text-gray-500">{profile.regOffice}</p>
           <p className="text-gray-500">{profile.phone}</p>
+          <p className="text-gray-500">{profile.email}</p>
         </div>
         <div className="w-[32%]">
           <p className={labelCls}>Billed to</p>
           <p className="font-semibold">{bill.billTo.name || "—"}</p>
-          <p className="whitespace-pre-line text-gray-500">{bill.billTo.address}</p>
+          <p className="whitespace-pre-line text-gray-500">{partyAddress(bill.billTo)}</p>
           <p className="text-gray-500">GSTIN: {bill.billTo.gstin || "—"}</p>
           <p className="text-gray-500">{stateLabel(bill.billTo.stateCode) || "—"}</p>
         </div>
@@ -379,7 +397,7 @@ function MinimalInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
       {!bill.shipSameAsBill && (
         <div className="mt-2.5">
           <p className={labelCls}>Shipped to</p>
-          <p className="font-semibold">{ship.name || "—"} <span className="font-normal text-gray-500">{ship.address}</span></p>
+          <p className="font-semibold">{ship.name || "—"} <span className="font-normal text-gray-500">{partyAddress(ship)}</span></p>
         </div>
       )}
 
@@ -469,7 +487,7 @@ function SidebarInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
             <div key={col.title} className="w-[48%]">
               <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ color: accent }}>{col.title}</p>
               <p className="font-semibold">{col.p.name || "—"}</p>
-              <p className="whitespace-pre-line">{col.p.address}</p>
+              <p className="whitespace-pre-line">{partyAddress(col.p)}</p>
               <p>GSTIN/UIN: {col.p.gstin || "—"}</p>
               <p>State: {stateLabel(col.p.stateCode) || "—"}</p>
             </div>
@@ -525,6 +543,7 @@ function PremiumInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <div>
             <h1 className="text-2xl font-bold leading-tight text-white" style={nameCss(profile.invoice.name)}>{profile.name}</h1>
             <p className="text-xs tracking-wide text-white">{profile.tagline}</p>
+            <HeaderSellerLines profile={profile} cls="text-[9px] leading-snug text-gray-300" />
           </div>
         </div>
         <div className="text-right">
@@ -540,14 +559,14 @@ function PremiumInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <div className="w-[34%]">
             <p className={micro} style={{ color: accent }}>Bill To</p>
             <p className="font-semibold">{bill.billTo.name || "—"}</p>
-            <p className="whitespace-pre-line text-gray-500">{bill.billTo.address}</p>
+            <p className="whitespace-pre-line text-gray-500">{partyAddress(bill.billTo)}</p>
             <p className="text-gray-500">GSTIN: {bill.billTo.gstin || "—"}</p>
             <p className="text-gray-500">{stateLabel(bill.billTo.stateCode) || "—"}</p>
           </div>
           <div className="w-[34%]">
             <p className={micro} style={{ color: accent }}>Ship To</p>
             <p className="font-semibold">{ship.name || "—"}</p>
-            <p className="whitespace-pre-line text-gray-500">{ship.address}</p>
+            <p className="whitespace-pre-line text-gray-500">{partyAddress(ship)}</p>
             <p className="text-gray-500">GSTIN: {ship.gstin || "—"}</p>
             <p className="text-gray-500">{stateLabel(ship.stateCode) || "—"}</p>
           </div>

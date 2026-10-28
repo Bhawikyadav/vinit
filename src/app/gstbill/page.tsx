@@ -4,19 +4,27 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
 import Button, { buttonStyles } from "@/components/ui/Button";
-import { IconPlus } from "@/components/dashboard/icons";
+import { IconPlus, IconClock } from "@/components/dashboard/icons";
 import FitToWidth from "@/components/FitToWidth";
 import InvoicePreview from "@/components/InvoicePreview";
 import InvoicePreviewMobile from "@/components/InvoicePreviewMobile";
+import PartyAutocomplete from "@/components/PartyAutocomplete";
+import ProductAutocomplete from "@/components/ProductAutocomplete";
 import { computeBill, nextInvoiceNo } from "@/lib/gst";
+import { partyFromCustomer } from "@/lib/customer";
+import { addToDate, formatFollowDate, relativeDayLabel, followUpUrgency } from "@/lib/followup";
 import { STATES } from "@/lib/states";
 import { getAllBills, getBill, saveBill, getProfile, isCloud } from "@/lib/storage";
+import { getAllCustomers, rememberParty } from "@/lib/customerStorage";
+import { getAllProducts } from "@/lib/productStorage";
 import {
   emptyParty,
   type Bill,
   type CompanyProfile,
+  type Customer,
   type LineItem,
   type Party,
+  type Product,
 } from "@/lib/types";
 
 const GST_RATES = [0, 5, 12, 18, 28];
@@ -52,10 +60,23 @@ function blankBill(invoiceNo: string, profile: CompanyProfile): Bill {
     roundOff: 0,
     template: profile.template,
     accentColor: profile.accentColor,
+    followUpDate: "",
+    followUpNote: "",
+    followUpDone: false,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };
 }
+
+// Quick offsets for the follow-up reminder, measured from the chosen base date.
+const FOLLOWUP_PRESETS: { label: string; opts: { days?: number; months?: number } }[] = [
+  { label: "1 week", opts: { days: 7 } },
+  { label: "15 days", opts: { days: 15 } },
+  { label: "1 month", opts: { months: 1 } },
+  { label: "2 months", opts: { months: 2 } },
+  { label: "3 months", opts: { months: 3 } },
+  { label: "6 months", opts: { months: 6 } },
+];
 
 // ---- small styled inputs (compact, themed to the app tokens) ----
 const inputCls =
@@ -118,9 +139,20 @@ function GstBillInner() {
 
   const [bill, setBill] = useState<Bill | null>(null);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [showFull, setShowFull] = useState(false);
+  // Which date the follow-up quick-offsets count from (invoice date or due date).
+  const [remindBase, setRemindBase] = useState<"invoice" | "due">("invoice");
+
+  // Load the saved-customer directory in the background (for the name
+  // autocomplete). A failure here must never block the form, so it's best-effort.
+  useEffect(() => {
+    getAllCustomers().then(setCustomers).catch(() => {});
+    getAllProducts().then(setProducts).catch(() => {});
+  }, []);
 
   // Load the company profile, then the existing bill or a fresh one.
   useEffect(() => {
@@ -163,11 +195,27 @@ function GstBillInner() {
   const removeItem = (id: string) =>
     setBill({ ...bill, items: bill.items.filter((it) => it.id !== id) });
 
+  // Remember this invoice's buyer (and a distinct consignee) in the customer
+  // directory so the name autocomplete learns it. Best-effort: a directory
+  // failure must never surface as a failed save, so it swallows its own errors.
+  async function captureParties() {
+    try {
+      await rememberParty(bill!.billTo);
+      if (!bill!.shipSameAsBill && bill!.shipTo.name.trim()) {
+        await rememberParty(bill!.shipTo);
+      }
+      setCustomers(await getAllCustomers());
+    } catch {
+      /* directory capture is best-effort */
+    }
+  }
+
   async function save() {
     setBusy(true);
     setStatus("");
     try {
       await saveBill(bill!);
+      await captureParties();
       setStatus("✓ Saved" + (isCloud() ? " to cloud" : " on this device"));
     } catch (e) {
       setStatus("✕ " + (e as Error).message);
@@ -180,6 +228,7 @@ function GstBillInner() {
     setBusy(true);
     try {
       await saveBill(bill!); // keep a record of what was exported
+      await captureParties();
       const { generatePdfBlob } = await import("@/lib/pdf/invoicePdf");
       const blob = await generatePdfBlob(bill!, totals!, profile!);
       const url = URL.createObjectURL(blob);
@@ -244,10 +293,20 @@ function GstBillInner() {
             <h2 className="mb-3 font-semibold text-ink">Bill to / Buyer</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Text label="Name" value={bill.billTo.name} onChange={(v) => patchParty("billTo", { name: v })} />
+                <PartyAutocomplete
+                  label="Name"
+                  value={bill.billTo.name}
+                  customers={customers}
+                  onNameChange={(v) => patchParty("billTo", { name: v })}
+                  onSelect={(c) => patchParty("billTo", partyFromCustomer(c))}
+                  placeholder="Type a name to search saved customers…"
+                />
               </div>
               <div className="sm:col-span-2">
                 <Text label="Address" value={bill.billTo.address} onChange={(v) => patchParty("billTo", { address: v })} />
+              </div>
+              <div className="sm:col-span-2">
+                <Text label="Address line 2 (optional)" value={bill.billTo.addressLine2 ?? ""} onChange={(v) => patchParty("billTo", { addressLine2: v })} />
               </div>
               <Text label="GSTIN / UIN" value={bill.billTo.gstin} onChange={(v) => patchParty("billTo", { gstin: v.toUpperCase() })} />
               <StateSelect label="State & Code" value={bill.billTo.stateCode} onChange={(v) => patchParty("billTo", { stateCode: v })} />
@@ -271,10 +330,20 @@ function GstBillInner() {
             {!bill.shipSameAsBill && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <Text label="Name" value={bill.shipTo.name} onChange={(v) => patchParty("shipTo", { name: v })} />
+                  <PartyAutocomplete
+                    label="Name"
+                    value={bill.shipTo.name}
+                    customers={customers}
+                    onNameChange={(v) => patchParty("shipTo", { name: v })}
+                    onSelect={(c) => patchParty("shipTo", partyFromCustomer(c))}
+                    placeholder="Type a name to search saved customers…"
+                  />
                 </div>
                 <div className="sm:col-span-2">
                   <Text label="Address" value={bill.shipTo.address} onChange={(v) => patchParty("shipTo", { address: v })} />
+                </div>
+                <div className="sm:col-span-2">
+                  <Text label="Address line 2 (optional)" value={bill.shipTo.addressLine2 ?? ""} onChange={(v) => patchParty("shipTo", { addressLine2: v })} />
                 </div>
                 <Text label="GSTIN / UIN" value={bill.shipTo.gstin} onChange={(v) => patchParty("shipTo", { gstin: v.toUpperCase() })} />
                 <StateSelect label="State & Code" value={bill.shipTo.stateCode} onChange={(v) => patchParty("shipTo", { stateCode: v })} />
@@ -306,7 +375,22 @@ function GstBillInner() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                     <div className="col-span-2 md:col-span-3">
-                      <Text label="Description" value={it.description} onChange={(v) => patchItem(it.id, { description: v })} />
+                      <ProductAutocomplete
+                        label="Description"
+                        value={it.description}
+                        products={products}
+                        onNameChange={(v) => patchItem(it.id, { description: v })}
+                        onSelect={(p) =>
+                          patchItem(it.id, {
+                            description: p.name,
+                            hsnSac: p.hsnSac,
+                            unit: p.unit,
+                            rate: p.rate,
+                            gstRate: p.gstRate,
+                          })
+                        }
+                        placeholder="Type to search saved products…"
+                      />
                     </div>
                     <Text label="HSN/SAC" value={it.hsnSac} onChange={(v) => patchItem(it.id, { hsnSac: v })} />
                     <Text label="Qty" type="number" value={String(it.qty)} onChange={(v) => patchItem(it.id, { qty: Number(v) })} />
@@ -347,6 +431,99 @@ function GstBillInner() {
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Follow-up reminder — private, never printed */}
+          <section className="rounded-2xl border border-hair bg-surface p-4 shadow-card">
+            <div className="mb-1 flex items-center gap-2">
+              <IconClock className="h-[18px] w-[18px] text-accent" />
+              <h2 className="font-semibold text-ink">Follow-up reminder</h2>
+              <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-faint">Private</span>
+            </div>
+            <p className="mb-3 text-xs text-muted">
+              Only you see this — it appears on your{" "}
+              <span className="font-medium text-ink">Dashboard</span> so you can chase the next order. Never printed on the invoice or PDF.
+            </p>
+
+            <div className="mb-2.5 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted">Count from</span>
+              <div className="inline-flex overflow-hidden rounded-lg border border-hair">
+                <button
+                  type="button"
+                  onClick={() => setRemindBase("invoice")}
+                  className={`px-2.5 py-1 text-xs font-medium transition-colors ${remindBase === "invoice" ? "bg-accent text-accent-fg" : "bg-surface text-muted hover:bg-surface-2"}`}
+                >
+                  Invoice date
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bill.dueDate && setRemindBase("due")}
+                  disabled={!bill.dueDate}
+                  title={bill.dueDate ? "" : "Set a due date first"}
+                  className={`border-l border-hair px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${remindBase === "due" ? "bg-accent text-accent-fg" : "bg-surface text-muted hover:bg-surface-2"}`}
+                >
+                  Due date
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-3 flex flex-wrap gap-2">
+              {FOLLOWUP_PRESETS.map((p) => {
+                const base = remindBase === "due" && bill.dueDate ? bill.dueDate : bill.invoiceDate;
+                const target = addToDate(base, p.opts);
+                const activeChip = bill.followUpDate === target;
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => patch({ followUpDate: target, followUpDone: false })}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${activeChip ? "border-accent bg-accent-weak text-accent" : "border-hair bg-surface text-muted hover:bg-surface-2 hover:text-ink"}`}
+                  >
+                    +{p.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted">Remind me on</span>
+                <input
+                  type="date"
+                  value={bill.followUpDate ?? ""}
+                  onChange={(e) => patch({ followUpDate: e.target.value, followUpDone: false })}
+                  className={inputCls}
+                />
+              </label>
+              <Text
+                label="Note (optional)"
+                value={bill.followUpNote ?? ""}
+                onChange={(v) => patch({ followUpNote: v })}
+                placeholder="e.g. Call for next refill / AMC renewal"
+              />
+            </div>
+
+            {bill.followUpDate ? (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-3 py-2">
+                <span className="flex min-w-0 items-center gap-2 text-xs text-muted">
+                  <IconClock className="h-4 w-4 shrink-0 text-accent" />
+                  <span className="truncate">
+                    Reminder set for{" "}
+                    <span className="font-semibold text-ink">{formatFollowDate(bill.followUpDate)}</span>
+                    <span className={followUpUrgency(bill.followUpDate) === "overdue" ? "text-neg" : "text-faint"}>
+                      {" "}· {relativeDayLabel(bill.followUpDate)}
+                    </span>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => patch({ followUpDate: "", followUpNote: "", followUpDone: false })}
+                  className="shrink-0 text-xs font-medium text-neg hover:underline"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : null}
           </section>
         </div>
 

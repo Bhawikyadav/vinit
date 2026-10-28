@@ -22,6 +22,7 @@ import { stateLabel } from "../states";
 import { getTemplate, contrastText, tint } from "../templates";
 import { colWidths } from "../invoiceColumns";
 import { namePdfStyle } from "../nameStyle";
+import { partyAddress } from "../types";
 import type { Bill, BillTotals, CompanyProfile, LineItem, ItemTotals } from "../types";
 
 // Roboto includes the ₹ (U+20B9) glyph; the default Helvetica does not.
@@ -218,6 +219,22 @@ function BankBlock({ profile }: { profile: CompanyProfile }) {
   );
 }
 
+// Seller GSTIN / address / contact for the header-led layouts (banner, premium),
+// where the body carries no company block. Mirrors the HTML preview and the
+// identity the classic letterhead prints. `color`/`opacity` keep each header's
+// palette (on-accent vs. on-dark).
+function HeaderSellerLines({ profile, color, opacity }: { profile: CompanyProfile; color: string; opacity?: number }) {
+  const st = { fontSize: 7.5, color, opacity };
+  return (
+    <View style={{ marginTop: 2 }}>
+      <Text style={st}>GSTIN: {profile.gstin}</Text>
+      <Text style={st}>{profile.regOffice}</Text>
+      {profile.branchOffice ? <Text style={st}>{profile.branchOffice}</Text> : null}
+      <Text style={st}>Phone {profile.phone} · Email {profile.email}</Text>
+    </View>
+  );
+}
+
 interface Ctx {
   bill: Bill;
   totals: BillTotals;
@@ -283,7 +300,7 @@ function ClassicInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
             <Text style={{ padding: 4, fontWeight: "bold", borderBottomWidth: 1, borderColor: bc, backgroundColor: partyHeadBg }}>{col.title}</Text>
             <View style={{ padding: 6, minHeight: 56 }}>
               <Text style={s.bold}>{col.p.name || "—"}</Text>
-              <Text>{col.p.address}</Text>
+              <Text>{partyAddress(col.p)}</Text>
               <Text>GSTIN/UIN: {col.p.gstin || "—"}</Text>
               <Text>State &amp; Code: {stateLabel(col.p.stateCode) || "—"}</Text>
             </View>
@@ -363,6 +380,7 @@ function BannerInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }:
           <View>
             <Text style={{ fontSize: 18, lineHeight: 1.2, fontWeight: "bold", color: onAccent, ...namePdfStyle(profile.invoice.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 9, color: onAccent, opacity: 0.85 }}>{profile.tagline}</Text>
+            <HeaderSellerLines profile={profile} color={onAccent} opacity={0.85} />
           </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
@@ -393,7 +411,7 @@ function BannerInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }:
               <View style={{ backgroundColor: tint(accent, 0.92), borderLeftWidth: 3, borderLeftColor: accent, padding: 8 }}>
                 <Text style={{ color: accent, fontWeight: "bold", fontSize: 7.5, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2 }}>{col.title}</Text>
                 <Text style={s.bold}>{col.p.name || "—"}</Text>
-                <Text>{col.p.address}</Text>
+                <Text>{partyAddress(col.p)}</Text>
                 <Text>GSTIN/UIN: {col.p.gstin || "—"}</Text>
                 <Text>State: {stateLabel(col.p.stateCode) || "—"}</Text>
               </View>
@@ -484,11 +502,12 @@ function MinimalInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <Text style={{ color: soft }}>GSTIN: {profile.gstin}</Text>
           <Text style={{ color: soft }}>{profile.regOffice}</Text>
           <Text style={{ color: soft }}>{profile.phone}</Text>
+          <Text style={{ color: soft }}>{profile.email}</Text>
         </View>
         <View style={{ width: "32%" }}>
           <Text style={label}>Billed to</Text>
           <Text style={s.bold}>{bill.billTo.name || "—"}</Text>
-          <Text style={{ color: soft }}>{bill.billTo.address}</Text>
+          <Text style={{ color: soft }}>{partyAddress(bill.billTo)}</Text>
           <Text style={{ color: soft }}>GSTIN: {bill.billTo.gstin || "—"}</Text>
           <Text style={{ color: soft }}>{stateLabel(bill.billTo.stateCode) || "—"}</Text>
         </View>
@@ -506,7 +525,7 @@ function MinimalInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
       {!bill.shipSameAsBill ? (
         <View style={{ marginTop: 10 }}>
           <Text style={label}>Shipped to</Text>
-          <Text style={s.bold}>{ship.name || "—"}  <Text style={{ color: soft, fontWeight: "normal" }}>{ship.address}</Text></Text>
+          <Text style={s.bold}>{ship.name || "—"}  <Text style={{ color: soft, fontWeight: "normal" }}>{partyAddress(ship)}</Text></Text>
         </View>
       ) : null}
 
@@ -618,14 +637,14 @@ function SidebarInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <View style={{ width: "48%" }}>
             <Text style={{ color: accent, fontSize: 7.5, textTransform: "uppercase", letterSpacing: 0.6, fontWeight: "bold", marginBottom: 2 }}>Bill To</Text>
             <Text style={s.bold}>{bill.billTo.name || "—"}</Text>
-            <Text>{bill.billTo.address}</Text>
+            <Text>{partyAddress(bill.billTo)}</Text>
             <Text>GSTIN/UIN: {bill.billTo.gstin || "—"}</Text>
             <Text>State: {stateLabel(bill.billTo.stateCode) || "—"}</Text>
           </View>
           <View style={{ width: "48%" }}>
             <Text style={{ color: accent, fontSize: 7.5, textTransform: "uppercase", letterSpacing: 0.6, fontWeight: "bold", marginBottom: 2 }}>Ship To</Text>
             <Text style={s.bold}>{ship.name || "—"}</Text>
-            <Text>{ship.address}</Text>
+            <Text>{partyAddress(ship)}</Text>
             <Text>GSTIN/UIN: {ship.gstin || "—"}</Text>
             <Text>State: {stateLabel(ship.stateCode) || "—"}</Text>
           </View>
@@ -699,6 +718,7 @@ function PremiumInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <View>
             <Text style={{ fontSize: 18, lineHeight: 1.2, fontWeight: "bold", color: "#ffffff", ...namePdfStyle(profile.invoice.name) }}>{profile.name}</Text>
             <Text style={{ fontSize: 9, color: "#ffffff", letterSpacing: 0.5 }}>{profile.tagline}</Text>
+            <HeaderSellerLines profile={profile} color="#d1d5db" />
           </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
@@ -715,14 +735,14 @@ function PremiumInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <View style={{ width: "34%" }}>
             <Text style={micro}>Bill To</Text>
             <Text style={s.bold}>{bill.billTo.name || "—"}</Text>
-            <Text style={{ color: soft }}>{bill.billTo.address}</Text>
+            <Text style={{ color: soft }}>{partyAddress(bill.billTo)}</Text>
             <Text style={{ color: soft }}>GSTIN: {bill.billTo.gstin || "—"}</Text>
             <Text style={{ color: soft }}>{stateLabel(bill.billTo.stateCode) || "—"}</Text>
           </View>
           <View style={{ width: "34%" }}>
             <Text style={micro}>Ship To</Text>
             <Text style={s.bold}>{ship.name || "—"}</Text>
-            <Text style={{ color: soft }}>{ship.address}</Text>
+            <Text style={{ color: soft }}>{partyAddress(ship)}</Text>
             <Text style={{ color: soft }}>GSTIN: {ship.gstin || "—"}</Text>
             <Text style={{ color: soft }}>{stateLabel(ship.stateCode) || "—"}</Text>
           </View>

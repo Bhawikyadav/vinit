@@ -7,6 +7,7 @@ import { formatINR } from "@/lib/gst";
 import { stateLabel } from "@/lib/states";
 import { contrastText, tint } from "@/lib/templates";
 import { nameCss } from "@/lib/nameStyle";
+import { partyAddress } from "@/lib/types";
 import type { Bill, BillTotals, CompanyProfile } from "@/lib/types";
 
 function fmtDate(d: string): string {
@@ -86,7 +87,9 @@ export default function InvoicePreviewMobile({
           <p className="text-sm font-semibold text-gray-800">{profile.name}</p>
           <p>GSTIN: {profile.gstin}</p>
           {profile.regOffice ? <p>{profile.regOffice}</p> : null}
+          {profile.branchOffice ? <p>{profile.branchOffice}</p> : null}
           {profile.phone ? <p>Phone: {profile.phone}</p> : null}
+          {profile.email ? <p>Email: {profile.email}</p> : null}
         </div>
 
         {/* Bill To / Ship To */}
@@ -100,7 +103,7 @@ export default function InvoicePreviewMobile({
                 {c.t}
               </p>
               <p className="text-sm font-medium text-gray-800">{c.p.name || "—"}</p>
-              {c.p.address ? <p className="whitespace-pre-line text-xs text-gray-600">{c.p.address}</p> : null}
+              {partyAddress(c.p) ? <p className="whitespace-pre-line text-xs text-gray-600">{partyAddress(c.p)}</p> : null}
               <p className="text-xs text-gray-500">GSTIN: {c.p.gstin || "—"}</p>
               <p className="text-xs text-gray-500">{stateLabel(c.p.stateCode) || "—"}</p>
             </div>

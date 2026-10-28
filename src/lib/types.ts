@@ -67,8 +67,42 @@ export interface CompanyProfile {
 export interface Party {
   name: string;
   address: string;
+  addressLine2?: string; // optional second address line, for long addresses
   gstin: string;
   stateCode: string; // GST state code, e.g. "08"
+}
+
+// A saved customer in the user's party directory — a superset of Party (the
+// billing identity reused on every document) plus an id, an optional contact
+// phone, and timestamps. Scoped to the owner in the `customers` collection. The
+// Bill To / Ship To name fields autocomplete against it, and saving an invoice
+// captures its buyer back into it so the directory builds itself.
+export interface Customer {
+  id: string;
+  name: string;
+  address: string;
+  gstin: string;
+  stateCode: string; // GST state code, e.g. "08"
+  phone: string; // optional contact number, "" if none
+  createdAt: string;
+  updatedAt: string;
+}
+
+// A saved product/service in the user's catalog — the reusable fields of a line
+// item (name, HSN/SAC, default unit, price, GST rate). The invoice "Description"
+// and quotation "Product Name" fields autocomplete against it, and picking one
+// fills those fields. Edits made on a document are LOCAL to that document — the
+// catalog is only ever changed on the Products page, and (unlike customers)
+// invoices never capture products back into it. Owner-scoped in `products`.
+export interface Product {
+  id: string;
+  name: string;
+  hsnSac: string; // HSN/SAC code — used on invoices; quotations ignore it
+  unit: string; // default unit, e.g. "Nos"
+  rate: number; // default price (₹), pre-tax
+  gstRate: number; // default GST % — used on invoices; quotations ignore it
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LineItem {
@@ -101,6 +135,12 @@ export interface Bill {
   // profile default when absent.
   template?: TemplateId;
   accentColor?: string;
+  // ---- Private follow-up reminder (NEVER printed on the invoice or PDF) ----
+  // A date to chase the customer for the next order — surfaced only to the owner,
+  // on the dashboard. All optional so older bills stay valid.
+  followUpDate?: string; // yyyy-mm-dd, or "" / absent for none
+  followUpNote?: string; // optional private reason ("AMC renewal", "next refill")
+  followUpDone?: boolean; // true once actioned/dismissed from the dashboard
   createdAt: string;
   updatedAt: string;
 }
@@ -125,7 +165,14 @@ export interface BillTotals {
 }
 
 export function emptyParty(): Party {
-  return { name: "", address: "", gstin: "", stateCode: "" };
+  return { name: "", address: "", addressLine2: "", gstin: "", stateCode: "" };
+}
+
+// The buyer/consignee address as rendered on a document: the two optional lines
+// joined by a newline. Templates print it in a pre-line / <Text> context, so the
+// break shows; empty lines are dropped so a one-line address stays one line.
+export function partyAddress(p: Party): string {
+  return [p.address, p.addressLine2].filter(Boolean).join("\n");
 }
 
 // ---------------------------------------------------------------------------
