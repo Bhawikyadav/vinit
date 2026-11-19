@@ -22,6 +22,7 @@ import {
   type Bill,
   type CompanyProfile,
   type Customer,
+  type ExtraCharge,
   type LineItem,
   type Party,
   type Product,
@@ -56,6 +57,7 @@ function blankBill(invoiceNo: string, profile: CompanyProfile): Bill {
     shipTo: emptyParty(),
     shipSameAsBill: true,
     items: [blankItem()],
+    extraCharges: [],
     manualRoundOff: false,
     roundOff: 0,
     template: profile.template,
@@ -194,6 +196,14 @@ function GstBillInner() {
   const addItem = () => setBill({ ...bill, items: [...bill.items, blankItem()] });
   const removeItem = (id: string) =>
     setBill({ ...bill, items: bill.items.filter((it) => it.id !== id) });
+  // Extra charges — editable total-box lines (Transport, Packing, …).
+  const charges = bill.extraCharges ?? [];
+  const addCharge = () =>
+    setBill({ ...bill, extraCharges: [...charges, { id: crypto.randomUUID(), label: "", amount: 0 }] });
+  const patchCharge = (id: string, p: Partial<ExtraCharge>) =>
+    setBill({ ...bill, extraCharges: charges.map((c) => (c.id === id ? { ...c, ...p } : c)) });
+  const removeCharge = (id: string) =>
+    setBill({ ...bill, extraCharges: charges.filter((c) => c.id !== id) });
 
   // Remember this invoice's buyer (and a distinct consignee) in the customer
   // directory so the name autocomplete learns it. Best-effort: a directory
@@ -431,6 +441,69 @@ function GstBillInner() {
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Additional charges — editable total-box lines (transport, packing…) */}
+          <section className="rounded-2xl border border-hair bg-surface p-4 shadow-card">
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="font-semibold text-ink">Additional charges</h2>
+              <Button variant="secondary" size="sm" onClick={addCharge}>
+                <IconPlus className="h-[18px] w-[18px]" /> Add charge
+              </Button>
+            </div>
+            <p className="mb-3 text-xs text-muted">
+              Extra lines in the totals box — e.g. <span className="font-medium text-ink">Transport Charges</span>, Packing, Loading.
+              Rename each label to whatever you need. Added to the <span className="font-medium text-ink">Grand Total</span>; the
+              GST calculation is never affected. Use a minus amount for a deduction.
+            </p>
+
+            {charges.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-hair px-3 py-4 text-center text-xs text-faint">
+                No extra charges. Tap “Add charge” to add Transport Charges or any custom line.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {charges.map((c) => (
+                  <div key={c.id} className="flex items-end gap-2">
+                    <label className="block min-w-0 flex-1">
+                      <span className="mb-1 block text-xs font-medium text-muted">Label</span>
+                      <input
+                        value={c.label}
+                        onChange={(e) => patchCharge(c.id, { label: e.target.value })}
+                        placeholder="e.g. Transport Charges"
+                        className={inputCls}
+                      />
+                    </label>
+                    <label className="block w-28 shrink-0">
+                      <span className="mb-1 block text-xs font-medium text-muted">Amount (₹)</span>
+                      <input
+                        type="number"
+                        value={String(c.amount)}
+                        onChange={(e) => patchCharge(c.id, { amount: Number(e.target.value) })}
+                        className={`${inputCls} text-right`}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => removeCharge(c.id)}
+                      aria-label="Remove charge"
+                      className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neg transition-colors hover:bg-surface-2"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true">
+                        <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6" />
+                        <path d="M10 11v6M14 11v6" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between border-t border-hair pt-2 text-sm">
+                  <span className="text-muted">Charges total</span>
+                  <span className="font-semibold tabular-nums text-ink">
+                    ₹ {totals.extraTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Follow-up reminder — private, never printed */}

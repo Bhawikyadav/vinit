@@ -159,6 +159,9 @@ export default function InvoicePreviewMobile({
           ) : (
             <Row label="IGST" value={`₹ ${formatINR(totals.igst)}`} />
           )}
+          {totals.extraCharges.map((c, i) => (
+            <Row key={i} label={c.label} value={`₹ ${formatINR(c.amount)}`} />
+          ))}
           {totals.roundOff ? <Row label="Round Off" value={`₹ ${formatINR(totals.roundOff)}`} /> : null}
           <div className="mt-1 border-t border-black/10 pt-2">
             <Row label="Grand Total" value={`₹ ${formatINR(totals.grandTotal)}`} strong accent={accent} />

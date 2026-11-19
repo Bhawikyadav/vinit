@@ -50,6 +50,9 @@ function taxRows(totals: BillTotals): { label: string; value: number }[] {
   const rows = [{ label: "Subtotal", value: totals.subtotal }];
   if (totals.intraState) rows.push({ label: "CGST", value: totals.cgst }, { label: "SGST", value: totals.sgst });
   else rows.push({ label: "IGST", value: totals.igst });
+  // Editable extra charges (Transport, Packing, …) sit between the tax lines
+  // and Round Off, so they read as additions on top of the taxed amount.
+  for (const c of totals.extraCharges) rows.push({ label: c.label, value: c.amount });
   rows.push({ label: "Round Off", value: totals.roundOff });
   return rows;
 }
@@ -225,8 +228,8 @@ function ClassicInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <p>{totals.amountInWords}</p>
         </div>
         <div className="w-[42%]">
-          {tax.map((t) => (
-            <div key={t.label} className="flex border-b" style={{ borderColor: bc }}>
+          {tax.map((t, i) => (
+            <div key={i} className="flex border-b" style={{ borderColor: bc }}>
               <div className="w-[55%] border-r p-1" style={{ borderColor: bc }}>{t.label}</div>
               <div className="w-[45%] p-1 text-right">₹ {formatINR(t.value)}</div>
             </div>
@@ -317,8 +320,8 @@ function BannerInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }:
             <p className="font-semibold">{totals.amountInWords}</p>
           </div>
           <div className="w-[42%]">
-            {tax.map((t) => (
-              <div key={t.label} className="flex justify-between py-0.5">
+            {tax.map((t, i) => (
+              <div key={i} className="flex justify-between py-0.5">
                 <span className="text-gray-500">{t.label}</span>
                 <span>₹ {formatINR(t.value)}</span>
               </div>
@@ -407,8 +410,8 @@ function MinimalInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
 
       <div className="mt-3.5 flex justify-end">
         <div className="w-[42%]">
-          {tax.map((t) => (
-            <div key={t.label} className="flex justify-between py-0.5">
+          {tax.map((t, i) => (
+            <div key={i} className="flex justify-between py-0.5">
               <span className="text-gray-500">{t.label}</span>
               <span>₹ {formatINR(t.value)}</span>
             </div>
@@ -506,8 +509,8 @@ function SidebarInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
 
         <div className="mt-3 flex justify-end">
           <div className="w-[46%]">
-            {tax.map((t) => (
-              <div key={t.label} className="flex justify-between py-0.5">
+            {tax.map((t, i) => (
+              <div key={i} className="flex justify-between py-0.5">
                 <span className="text-gray-500">{t.label}</span>
                 <span>₹ {formatINR(t.value)}</span>
               </div>
@@ -588,8 +591,8 @@ function PremiumInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
             <p className="font-semibold">{totals.amountInWords}</p>
           </div>
           <div className="w-[44%]">
-            {tax.map((t) => (
-              <div key={t.label} className="flex justify-between py-0.5">
+            {tax.map((t, i) => (
+              <div key={i} className="flex justify-between py-0.5">
                 <span className="text-gray-500">{t.label}</span>
                 <span>₹ {formatINR(t.value)}</span>
               </div>

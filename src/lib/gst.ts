@@ -38,7 +38,16 @@ export function computeBill(
   const sgst = intraState ? round2(totalGst - cgst) : 0;
   const igst = intraState ? 0 : totalGst;
 
-  const preRound = round2(subtotal + totalGst);
+  // Editable extra charges (Transport, Packing, …). They sit OUTSIDE the tax
+  // math — subtotal and the CGST/SGST/IGST split above are already final — and
+  // only lift the grand total. Rows with a blank label are dropped so what's
+  // displayed and what's summed always match (no hidden amounts).
+  const extraCharges = (bill.extraCharges ?? [])
+    .filter((c) => c.label.trim() !== "")
+    .map((c) => ({ label: c.label.trim(), amount: round2(Number(c.amount) || 0) }));
+  const extraTotal = round2(extraCharges.reduce((sum, c) => sum + c.amount, 0));
+
+  const preRound = round2(subtotal + totalGst + extraTotal);
   const roundOff = bill.manualRoundOff
     ? Number(bill.roundOff) || 0
     : round2(Math.round(preRound) - preRound);
@@ -52,6 +61,8 @@ export function computeBill(
     sgst,
     igst,
     intraState,
+    extraCharges,
+    extraTotal,
     roundOff,
     grandTotal,
     amountInWords: amountInWords(grandTotal),

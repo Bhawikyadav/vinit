@@ -88,6 +88,9 @@ function taxRows(totals: BillTotals): { label: string; value: number }[] {
   } else {
     rows.push({ label: "IGST", value: totals.igst });
   }
+  // Editable extra charges (Transport, Packing, …) between the tax lines and
+  // Round Off. They lift the grand total only — the GST math is untouched.
+  for (const c of totals.extraCharges) rows.push({ label: c.label, value: c.amount });
   rows.push({ label: "Round Off", value: totals.roundOff });
   return rows;
 }
@@ -325,8 +328,8 @@ function ClassicInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
           <Text>{totals.amountInWords}</Text>
         </View>
         <View style={{ width: "42%" }}>
-          {tax.map((t) => (
-            <View key={t.label} style={[s.row, { borderBottomWidth: 1, borderColor: bc }]}>
+          {tax.map((t, i) => (
+            <View key={i} style={[s.row, { borderBottomWidth: 1, borderColor: bc }]}>
               <Text style={{ width: "55%", padding: 4, borderRightWidth: 1, borderColor: bc }}>{t.label}</Text>
               <Text style={{ width: "45%", padding: 4, textAlign: "right" }}>₹ {formatINR(t.value)}</Text>
             </View>
@@ -434,8 +437,8 @@ function BannerInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }:
             <Text style={s.bold}>{totals.amountInWords}</Text>
           </View>
           <View style={{ width: "42%" }}>
-            {tax.map((t) => (
-              <View key={t.label} style={[s.row, { justifyContent: "space-between", paddingVertical: 2 }]}>
+            {tax.map((t, i) => (
+              <View key={i} style={[s.row, { justifyContent: "space-between", paddingVertical: 2 }]}>
                 <Text style={{ color: soft }}>{t.label}</Text>
                 <Text>₹ {formatINR(t.value)}</Text>
               </View>
@@ -542,8 +545,8 @@ function MinimalInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
       {/* Totals — plain right-aligned */}
       <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 14 }}>
         <View style={{ width: "42%" }}>
-          {tax.map((t) => (
-            <View key={t.label} style={[s.row, { justifyContent: "space-between", paddingVertical: 2 }]}>
+          {tax.map((t, i) => (
+            <View key={i} style={[s.row, { justifyContent: "space-between", paddingVertical: 2 }]}>
               <Text style={{ color: soft }}>{t.label}</Text>
               <Text>₹ {formatINR(t.value)}</Text>
             </View>
@@ -669,8 +672,8 @@ function SidebarInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
         {/* Totals */}
         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
           <View style={{ width: "46%" }}>
-            {tax.map((t) => (
-              <View key={t.label} style={[s.row, { justifyContent: "space-between", paddingVertical: 2 }]}>
+            {tax.map((t, i) => (
+              <View key={i} style={[s.row, { justifyContent: "space-between", paddingVertical: 2 }]}>
                 <Text style={{ color: soft }}>{t.label}</Text>
                 <Text>₹ {formatINR(t.value)}</Text>
               </View>
@@ -771,8 +774,8 @@ function PremiumInvoice({ bill, totals, profile, accent, ship, cols, meta, tax }
             <Text style={s.bold}>{totals.amountInWords}</Text>
           </View>
           <View style={{ width: "44%" }}>
-            {tax.map((t) => (
-              <View key={t.label} style={[s.row, { justifyContent: "space-between", paddingVertical: 2 }]}>
+            {tax.map((t, i) => (
+              <View key={i} style={[s.row, { justifyContent: "space-between", paddingVertical: 2 }]}>
                 <Text style={{ color: soft }}>{t.label}</Text>
                 <Text>₹ {formatINR(t.value)}</Text>
               </View>

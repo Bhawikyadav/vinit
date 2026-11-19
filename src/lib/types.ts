@@ -116,6 +116,18 @@ export interface LineItem {
   gstRate: number; // percentage, e.g. 18
 }
 
+// An editable extra line in the totals box — e.g. "Transport Charges",
+// "Packing", "Loading", or a flat deduction (use a negative amount). The label
+// is fully renameable so each company can word these however it wants. These
+// are added to the Grand Total AFTER tax and NEVER touch the item/GST math:
+// Subtotal and the CGST/SGST/IGST split are computed from the line items alone,
+// so adding, renaming or removing a charge can't corrupt the tax calculation.
+export interface ExtraCharge {
+  id: string;
+  label: string; // shown in the totals box; blank-label rows are ignored
+  amount: number; // ₹; may be negative for a deduction
+}
+
 export interface Bill {
   id: string;
   invoiceNo: string;
@@ -128,6 +140,10 @@ export interface Bill {
   shipTo: Party;
   shipSameAsBill: boolean;
   items: LineItem[];
+  // Editable extra charge / adjustment rows shown in the totals box (e.g.
+  // Transport Charges). Optional so older saved bills stay valid. Added to the
+  // Grand Total after tax; they never affect the subtotal or the GST split.
+  extraCharges?: ExtraCharge[];
   manualRoundOff: boolean;
   roundOff: number;
   // Snapshot of the template/accent used when this bill was created, so a past
@@ -159,6 +175,11 @@ export interface BillTotals {
   sgst: number;
   igst: number;
   intraState: boolean;
+  // Resolved extra-charge rows for display: only those with a non-blank label,
+  // in order, with their amounts rounded. `extraTotal` is their sum (added to
+  // the grand total). Empty array / 0 when the bill has no extra charges.
+  extraCharges: { label: string; amount: number }[];
+  extraTotal: number;
   roundOff: number;
   grandTotal: number;
   amountInWords: string;
