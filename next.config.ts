@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   transpilePackages: ["@react-pdf/renderer"],
+  experimental: {
+    // Managed by `next upgrade --agent`: records the active upgrade policy.
+    agentUpgrade: "security",
+  },
   turbopack: {
     root: __dirname,
     rules: {
